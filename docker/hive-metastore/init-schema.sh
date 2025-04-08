@@ -1,27 +1,29 @@
 #!/bin/bash
 
-# This script initializes the Hive metastore schema in PostgreSQL
+# This script initializes and starts both Hive Metastore and HiveServer2
 
-echo "Initializing Hive metastore schema..."
+echo ">>>> Initializing Hive services..."
 
 # Wait for PostgreSQL to be ready
-echo "Waiting for PostgreSQL to be ready..."
+echo ">>>> Waiting for PostgreSQL to be ready..."
 sleep 10
 
-# Initialize the schema
-echo "Creating Hive metastore schema..."
-$HIVE_HOME/bin/schematool -dbType postgres -initSchema & 
-/opt/hive/bin/hive --service metastore &
-# /opt/hive/bin/hive --service hiveserver2 \
-#   --hiveconf hive.server2.thrift.bind.host=0.0.0.0 \
-#   --hiveconf hive.server2.thrift.port=10000 \
-#   --hiveconf hive.server2.enable.doAs=false \
-#   --hiveconf hive.server2.transport.mode=binary
+# Initialize schema if not exists
+if [ ! -f /metastore/metastore_db/metastore.script ]; then
+  echo ">>>> Creating Hive metastore schema..."
+  $HIVE_HOME/bin/schematool -dbType postgres -initSchema
+fi
 
-echo "Hive metastore schema initialization completed!"
+# Start Metastore in background with IS_RESUME
+echo ">>>> Starting Hive Metastore..."
+export IS_RESUME="true"
+$HIVE_HOME/bin/hive --service metastore &
 
-# Create default database
-echo "Creating default database in Hive metastore..."
+# Wait for metastore to be ready
+sleep 15
+
+# Create default database if needed
+echo ">>>> Creating default database..."
 $HIVE_HOME/bin/hive -e "CREATE DATABASE IF NOT EXISTS default;"
 
-echo -e "Metastore initialization completed successfully!\n\n\n\n"
+echo -e "\n\n>>>> Hive services started successfully!\nMetastore PID: $(pgrep -f 'metastore')\n\n"

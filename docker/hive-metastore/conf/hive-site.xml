@@ -48,6 +48,10 @@
     <name>hive.security.authorization.enabled</name>
     <value>false</value>
 </property>
+<property>
+  <name>hive.server2.enable.doAs</name>
+  <value>false</value>
+</property>
 
     <property>
         <name>datanucleus.autoCreateSchema</name>
@@ -94,4 +98,49 @@
         <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
         <description>S3A filesystem implementation</description>
     </property>
+
+<property>
+    <name>fs.s3a.aws.credentials.provider</name>
+    <value>org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</value>
+    <description>Credentials provider for MinIO</description>
+</property>
+
+<property>
+    <name>hive.exec.scratchdir</name>
+    <value>/tmp/hive</value>
+</property>
+
+<property>
+    <name>hive.aux.jars.path</name>
+    <value>/opt/hive/lib/hadoop-aws-3.2.0.jar,/opt/hive/lib/aws-java-sdk-bundle-1.11.375.jar</value>
+</property>
+
+
+<!-- Add these properties to your existing hive-site.xml -->
+<property>
+  <name>hive.metastore.client.connect.retry.delay</name>
+  <value>5</value>
+</property>
+
+<property>
+  <name>hive.metastore.client.socket.timeout</name>
+  <value>1800</value>
+</property>
+
+<property>
+  <name>hive.metastore.schema.verification</name>
+  <value>false</value>
+</property>
+
+<property>
+  <name>metastore.service.schema.verification</name>
+  <value>false</value>
+</property>
+
+<!-- This might be causing issues if the schemas are incompatible -->
+<property>
+  <name>datanucleus.schema.autoCreateAll</name>
+  <value>false</value>
+</property>
+
 </configuration>

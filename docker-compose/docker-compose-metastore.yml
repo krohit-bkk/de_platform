@@ -24,14 +24,14 @@ services:
       - postgres
     ports:
       - "9083:9083"
-      - "10000:10000"
+      # - "10000:10000"
+      # - "10002:10002"
     environment:
       DB_DRIVER: postgres
       DB_CONNECTION_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       DB_USER: ${HIVE_DB_USER}
       DB_PASSWORD: ${HIVE_DB_PASSWORD}
-      # Add this to bypass HDFS checks
-      HIVE_SKIP_HADOOP_VERSION_CHECK: "true" 
+      HIVE_SKIP_HADOOP_VERSION_CHECK: "true" # Add this to bypass HDFS checks
       IS_RESUME: "true"
     volumes:
       - ../docker/hive-metastore/conf/hive-site.xml:/opt/hive/conf/hive-site.xml
@@ -53,24 +53,24 @@ services:
     depends_on:
       - postgres
       - hive-metastore
-    # ports:
-    #   - "9083:9083"
-    #   - "10000:10000"
+    ports:
+      - "9083:9083"
+      - "10000:10000"
     environment:
       DB_DRIVER: postgres
       DB_CONNECTION_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       DB_USER: ${HIVE_DB_USER}
       DB_PASSWORD: ${HIVE_DB_PASSWORD}
-      # Add this to bypass HDFS checks
-      HIVE_SKIP_HADOOP_VERSION_CHECK: "true" 
+      HIVE_SKIP_HADOOP_VERSION_CHECK: "true" # Add this to bypass HDFS checks
     volumes:
       - ../docker/hive-metastore/conf/hive-site.xml:/opt/hive/conf/hive-site.xml
       - ../docker/hive-metastore/init-schema.sh:/opt/hive/init-schema.sh
+      - ../docker/hive-metastore/init-hs2.sh:/opt/hive/init-hs2.sh
       - ../docker/hive-metastore/test-metastore.sh:/opt/hive/test-metastore.sh
       - ../docker/hive-metastore/lib/hadoop-aws-3.2.0.jar:/opt/hive/lib/hadoop-aws-3.2.0.jar
       - ../docker/hive-metastore/lib/aws-java-sdk-bundle-1.11.375.jar:/opt/hive/lib/aws-java-sdk-bundle-1.11.375.jar
-      # - hive_data:/opt/hive/data
-      - ${PROJECT_ROOT}/data/hive_data/hive-tmp1:/tmp/hive
+      - hive_hs2_data:/opt/hive/data
+      - ${PROJECT_ROOT}/data/hive_hs2_data/hive-tmp1:/tmp/hive
     command: /bin/bash -c "chmod +x /opt/hive/test-metastore.sh && /bin/bash /opt/hive/test-metastore.sh && tail -f /dev/null"
     entrypoint: []
     networks:
@@ -83,6 +83,8 @@ volumes:
   postgres_data:
     external: true 
   hive_data:
+     external: true
+  hive_hs2_data:
      external: true
 
 networks:

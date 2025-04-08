@@ -23,6 +23,19 @@ function all(){
   nv
 }
 
+# Reset PG
+function reset_pg(){
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml down postgres
+  sudo rm -rf ./data/postgres_data && mkdir -p ./data/postgres_data && sudo chmod -R 777 ./data/postgres_data
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d postgres
+}
+
+
+# Login in hive-metastore as root 
+docker exec -it -u root hive-metastore bash 
+apt update && apt install iproute2 -y && apt install netcat
+ss -ltnp | grep 10000
+nc -zv hive-metastore 9083
 
 # DOCKER COMPOSE
 # Base

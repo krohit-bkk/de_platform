@@ -2,27 +2,21 @@
 
 # This script initializes the Hive metastore schema in PostgreSQL
 
-echo "Initializing Hive metastore schema..."
-
-# Wait for PostgreSQL to be ready
-echo "Waiting for PostgreSQL to be ready..."
+echo "Initializing Hive Server2..."
 sleep 10
 
 # Initialize the schema
-echo "Creating Hive metastore schema..."
-$HIVE_HOME/bin/schematool -dbType postgres -initSchema & 
-/opt/hive/bin/hive --service metastore &
+/opt/hive/bin/hive --service hiveserver2 \
+  --hiveconf hive.server2.thrift.bind.host=0.0.0.0 \
+  --hiveconf hive.server2.thrift.port=10000 \
+  --hiveconf hive.server2.enable.doAs=false \
+  --hiveconf hive.server2.transport.mode=binary \
+  --hiveconf hive.metastore.uris=thrift://hive-metastore:9083 &
 
-# /opt/hive/bin/hive --service hiveserver2 \
-#   --hiveconf hive.server2.thrift.bind.host=0.0.0.0 \
-#   --hiveconf hive.server2.thrift.port=10000 \
-#   --hiveconf hive.server2.enable.doAs=false \
-#   --hiveconf hive.server2.transport.mode=binary
-
-echo "Hive metastore schema initialization completed!"
+echo -e "\n\nHiveServer2 started!\n\n"
 
 # Create default database
-echo "Creating default database in Hive metastore..."
-$HIVE_HOME/bin/hive -e "CREATE DATABASE IF NOT EXISTS default;"
+echo ">>>> Creating default database in Hive metastore..."
+$HIVE_HOME/bin/beeline -u "jdbc:hive2://hiveserver2:10000" -e "SHOW TABLES;"
 
-echo -e "Metastore initialization completed successfully!\n\n\n\n"
+echo -e "Hiveserver2 initialization completed successfully!\n\n\n\n"
