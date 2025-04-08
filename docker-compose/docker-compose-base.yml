@@ -1,0 +1,51 @@
+volumes:
+  pg_data:
+    name: pg_data
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PROJECT_ROOT}/data
+      o: bind
+
+  postgres_data:
+    name: postgres_data
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PROJECT_ROOT}/data/postgres_data
+      o: bind
+
+  minio_data:
+    name: minio_data
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PROJECT_ROOT}/data/minio_data
+      o: bind
+
+  hive_data:
+    name: hive_data
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PROJECT_ROOT}/data/hive_data
+      o: bind
+
+networks:
+  data_platform_net:
+    name: data_platform_network
+    driver: bridge
+
+services:
+  dummy:
+    image: alpine
+    container_name: dummy
+    command: sleep 5
+    volumes:
+      - pg_data:/mnt/fake0
+      - postgres_data:/mnt/fake1
+      - minio_data:/mnt/fake2
+      - hive_data:/mnt/fake3
+    networks:
+      - data_platform_net
+

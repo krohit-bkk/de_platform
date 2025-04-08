@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # MinIO S3 compatible storage
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - data_platform_network
+
+    # MinIO Client for bucket creation
+  minio-client:
+    image: minio/mc:latest
+    container_name: minio-client
+    depends_on:
+      - minio
+    volumes:
+      - ../docker/minio/create-buckets.sh:/create-buckets.sh
+    entrypoint: ["/bin/sh", "/create-buckets.sh"]
+    networks:
+      - data_platform_network
+    restart: on-failure
+
+  # MinIO Test Client
+  minio-test:
+    image: minio/mc:latest
+    container_name: minio-test
+    depends_on:
+      - minio
+      - minio-client
+    volumes:
+      - ../docker/minio/test-minio.sh:/test-minio.sh
+    entrypoint: ["/bin/sh", "/test-minio.sh"]
+    networks:
+      - data_platform_network
+    restart: on-failure
+
+volumes:
+  minio_data:
+    external: true
+
+networks:
+  data_platform_network:
+    external: true

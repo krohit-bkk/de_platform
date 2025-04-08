@@ -1,0 +1,74 @@
+# PROJECT SETUP
+cd /home/jhanak/Learning/vol_poc
+export PROJECT_ROOT=$(pwd)
+envsubst < .env | tee .env.evaluated
+
+
+# ALIASES
+alias psa='docker ps -a'
+alias rma='docker rm -f $(docker ps -aq)'
+
+# FUNCTIONS
+# print networks and volume
+function nv(){
+  docker volume ls
+  echo ""
+  docker network ls
+}
+
+# Print all
+function all(){
+  docker ps -a
+  echo ""
+  nv
+}
+
+
+# DOCKER COMPOSE
+# Base
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml up -d
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml down -v
+
+# Postgres-test
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-postgres.yml up -d
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-postgres.yml down -v postgres
+
+# MinIO
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml down -v minio
+
+# Hive Metastore
+chmod -R 777 ${PROJECT_ROOT}/data/hive_data/hive-tmp
+
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d hive-metastore
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml down -v hive-metastore
+
+-- Create hive table
+CREATE TABLE default.sample(
+  id INTEGER,
+  code STRING,
+  name STRING
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ","
+LINES TERMINATED BY  "\n"
+LOCATION "s3a://raw-data/sample_data";
+
+set hive.cli.print.header=true;
+hive>
+    >
+    > SELECT * FROM sample a;
+OK
+a.id    a.code  a.name
+1       A       Foo
+2       B       Bar
+Time taken: 0.094 seconds, Fetched: 2 row(s)
+
+# Test Metastore
+sudo rm -rf ./data/postgres_data && mkdir -p ./data/postgres_data && chmod -R 777 ./data/postgres_data
+
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d metastore-test
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml down -v metastore-test
+
+# Connection refused for HS2
+https://stackoverflow.com/questions/68985195/could-not-open-connection-to-the-hs2-server

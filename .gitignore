@@ -1,0 +1,10 @@
+# Volume/log files
+./data/hive_data/hive-tmp/
+./data/hive_data/hive-tmp1/
+./data/minio_data/
+./data/postgres_data/
+./data/postgres_alt
+./data/pg_data
+
+# env files
+.env.evaluated

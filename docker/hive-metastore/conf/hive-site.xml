@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<configuration>
+    <property>
+        <name>javax.jdo.option.ConnectionURL</name>
+        <value>jdbc:postgresql://postgres:5432/metastore_db</value>
+        <description>PostgreSQL JDBC connection string</description>
+    </property>
+    
+    <property>
+        <name>javax.jdo.option.ConnectionDriverName</name>
+        <value>org.postgresql.Driver</value>
+        <description>PostgreSQL JDBC driver class</description>
+    </property>
+    
+    <property>
+        <name>javax.jdo.option.ConnectionUserName</name>
+        <value>postgres</value>
+        <description>PostgreSQL user name</description>
+    </property>
+    
+    <property>
+        <name>javax.jdo.option.ConnectionPassword</name>
+        <value>postgres</value>
+        <description>PostgreSQL password</description>
+    </property>
+    
+    <property>
+        <name>hive.metastore.warehouse.dir</name>
+        <value>s3a://raw-data/warehouse</value>
+        <description>Default location for Hive warehouse</description>
+    </property>
+    
+    <property>
+        <name>hive.metastore.uris</name>
+        <value>thrift://hive-metastore:9083</value>
+        <description>Thrift URI for the remote metastore</description>
+    </property>
+    
+<property>
+  <name>hive.server2.thrift.bind.host</name>
+  <value>0.0.0.0</value> <!-- Allows external connections -->
+</property>
+<property>
+  <name>hive.server2.thrift.port</name>
+  <value>10000</value>
+</property>
+<property>
+    <name>hive.security.authorization.enabled</name>
+    <value>false</value>
+</property>
+
+    <property>
+        <name>datanucleus.autoCreateSchema</name>
+        <value>true</value>
+        <description>Auto creates the necessary schema in the database</description>
+    </property>
+    
+    <property>
+        <name>datanucleus.fixedDatastore</name>
+        <value>false</value>
+    </property>
+    
+    <property>
+        <name>datanucleus.autoStartMechanism</name>
+        <value>SchemaTable</value>
+    </property>
+    
+    <property>
+        <name>fs.s3a.endpoint</name>
+        <value>http://minio:9000</value>
+        <description>MinIO endpoint</description>
+    </property>
+    
+    <property>
+        <name>fs.s3a.access.key</name>
+        <value>minioadmin</value>
+        <description>MinIO access key</description>
+    </property>
+    
+    <property>
+        <name>fs.s3a.secret.key</name>
+        <value>minioadmin</value>
+        <description>MinIO secret key</description>
+    </property>
+    
+    <property>
+        <name>fs.s3a.path.style.access</name>
+        <value>true</value>
+        <description>Use path-style access for S3</description>
+    </property>
+    
+    <property>
+        <name>fs.s3a.impl</name>
+        <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+        <description>S3A filesystem implementation</description>
+    </property>
+</configuration>

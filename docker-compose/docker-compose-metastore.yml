@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # Metastore - Using PostgreSQL for Hive Metastore
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ${PROJECT_ROOT}/data/postgres_alt:/var/lib/postgresql/data
+    networks:
+      - data_platform_network
+
+  # Hive Metastore Service
+  hive-metastore:
+    image: apache/hive:3.1.3
+    container_name: hive-metastore
+    depends_on:
+      - postgres
+    ports:
+      - "9083:9083"
+      - "10000:10000"
+    environment:
+      DB_DRIVER: postgres
+      DB_CONNECTION_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USER: ${HIVE_DB_USER}
+      DB_PASSWORD: ${HIVE_DB_PASSWORD}
+      # Add this to bypass HDFS checks
+      HIVE_SKIP_HADOOP_VERSION_CHECK: "true" 
+      IS_RESUME: "true"
+    volumes:
+      - ../docker/hive-metastore/conf/hive-site.xml:/opt/hive/conf/hive-site.xml
+      - ../docker/hive-metastore/init-schema.sh:/opt/hive/init-schema.sh
+      - ../docker/hive-metastore/test-metastore.sh:/opt/hive/test-metastore.sh
+      - ../docker/hive-metastore/lib/hadoop-aws-3.2.0.jar:/opt/hive/lib/hadoop-aws-3.2.0.jar
+      - ../docker/hive-metastore/lib/aws-java-sdk-bundle-1.11.375.jar:/opt/hive/lib/aws-java-sdk-bundle-1.11.375.jar
+      - hive_data:/opt/hive/data
+      - ${PROJECT_ROOT}/data/hive_data/hive-tmp:/tmp/hive
+    command: /bin/bash -c "chmod +x /opt/hive/init-schema.sh && /bin/bash /opt/hive/init-schema.sh && tail -f /dev/null"
+    entrypoint: []
+    networks:
+      - data_platform_network
+
+  # Hive Metastore Test-Client
+  metastore-test:
+    image: apache/hive:3.1.3
+    container_name: metastore-test
+    depends_on:
+      - postgres
+      - hive-metastore
+    # ports:
+    #   - "9083:9083"
+    #   - "10000:10000"
+    environment:
+      DB_DRIVER: postgres
+      DB_CONNECTION_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USER: ${HIVE_DB_USER}
+      DB_PASSWORD: ${HIVE_DB_PASSWORD}
+      # Add this to bypass HDFS checks
+      HIVE_SKIP_HADOOP_VERSION_CHECK: "true" 
+    volumes:
+      - ../docker/hive-metastore/conf/hive-site.xml:/opt/hive/conf/hive-site.xml
+      - ../docker/hive-metastore/init-schema.sh:/opt/hive/init-schema.sh
+      - ../docker/hive-metastore/test-metastore.sh:/opt/hive/test-metastore.sh
+      - ../docker/hive-metastore/lib/hadoop-aws-3.2.0.jar:/opt/hive/lib/hadoop-aws-3.2.0.jar
+      - ../docker/hive-metastore/lib/aws-java-sdk-bundle-1.11.375.jar:/opt/hive/lib/aws-java-sdk-bundle-1.11.375.jar
+      # - hive_data:/opt/hive/data
+      - ${PROJECT_ROOT}/data/hive_data/hive-tmp1:/tmp/hive
+    command: /bin/bash -c "chmod +x /opt/hive/test-metastore.sh && /bin/bash /opt/hive/test-metastore.sh && tail -f /dev/null"
+    entrypoint: []
+    networks:
+      - data_platform_network
+
+
+volumes:
+  minio_data:
+    external: true
+  postgres_data:
+    external: true 
+  hive_data:
+     external: true
+
+networks:
+  data_platform_network:
+    external: true
