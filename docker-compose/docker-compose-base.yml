@@ -38,6 +38,15 @@ volumes:
       type: none
       device: ${PROJECT_ROOT}/data/hive_hs2_data
       o: bind
+
+  spark_data:
+    name: spark_data
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PROJECT_ROOT}/data/spark_data
+      o: bind
+
 networks:
   data_platform_net:
     name: data_platform_network
@@ -54,6 +63,7 @@ services:
       - minio_data:/mnt/fake2
       - hive_data:/mnt/fake3
       - hive_hs2_data:/mnt/fake3
+      - spark_data:/mnt/fake4
     networks:
       - data_platform_net
       

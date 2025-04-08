@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Apache Spark for ETL
+  spark-master:
+    image: bitnami/spark:3.3.0
+    container_name: spark-master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    volumes:
+      - ../docker/spark/conf/spark-defaults.xml:/opt/bitnami/spark/conf/spark-defaults.xml
+      - ../docker/spark/setup-spark.sh:/opt/bitnami/setup-spark.sh
+      - ../docker/spark/jobs:/opt/spark/jobs
+      - ../docker/spark/delta-lake:/opt/spark/delta-lake
+      # - ../docker/spark/lib/hadoop-aws-3.2.0.jar:/opt/bitnami/spark/jars/hadoop-aws-3.2.0.jar
+      - ../docker/spark/lib/delta-core_2.12-2.2.0.jar:/opt/bitnami/spark/jars/delta-core_2.12-2.2.0
+      # - ../docker/spark/lib/aws-java-sdk-bundle-1.11.375.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.11.375.jar
+      - spark_data:/bitnami
+    command: /bin/bash -c "/opt/bitnami/setup-spark.sh && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh && tail -f /dev/null"
+    networks:
+      - data_platform_network
+
+  spark-worker-1:
+    image: bitnami/spark:3.3.0
+    container_name: spark-worker-1
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    volumes:
+      - ../docker/spark/conf/spark-defaults.xml:/opt/bitnami/spark/conf/spark-defaults.xml
+      - ../docker/spark/setup-spark.sh:/opt/bitnami/setup-spark.sh
+      - spark_data:/bitnami
+    command: /bin/bash -c "/opt/bitnami/setup-spark.sh && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
+    networks:
+      - data_platform_network
+
+  spark-worker-2:
+    image: bitnami/spark:3.3.0
+    container_name: spark-worker-2
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    volumes:
+      - ../docker/spark/conf/spark-defaults.xml:/opt/bitnami/spark/conf/spark-defaults.xml
+      - ../docker/spark/setup-spark.sh:/opt/bitnami/spark/setup-spark.sh
+      - spark_data:/bitnami
+    command: /bin/bash -c "/opt/bitnami/spark/setup-spark.sh && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
+    networks:
+      - data_platform_network
+
+  # Spark ETL Test Client
+  spark-test:
+    image: bitnami/spark:3.3.0
+    container_name: spark-test
+    user: root
+    depends_on:
+      - spark-master
+    volumes:
+      - ../docker/spark/test-spark-etl.sh:/opt/bitnami/spark/test-spark-etl.sh
+      - ../docker/spark/jobs:/opt/spark/jobs
+      - ../docker/spark/lib/delta-core_2.12-2.2.0.jar:/opt/bitnami/spark/jars/delta-core_2.12-2.2.0
+    entrypoint: ["/bin/bash", "/opt/bitnami/spark/test-spark-etl.sh"]
+    networks:
+      - data_platform_network
+    restart: on-failure
+
+  # Delta Lake Test Client
+  delta-lake-test:
+    image: bitnami/spark:3.3.0
+    container_name: delta-lake-test
+    depends_on:
+      - spark-master
+    volumes:
+      - ../docker/spark/delta-lake/test-delta-lake.sh:/test-delta-lake.sh
+      - ../docker/spark/delta-lake:/opt/spark/delta-lake
+    entrypoint: ["/bin/bash", "/test-delta-lake.sh"]
+    networks:
+      - data_platform_network
+    restart: on-failure
+
+networks:
+  data_platform_network:
+    external: true
+
+volumes:
+  spark_data:
+    external: true

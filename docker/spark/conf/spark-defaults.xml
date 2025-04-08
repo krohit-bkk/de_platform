@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<configuration>
+    <!-- Spark configuration for connecting to Hive Metastore -->
+    <property>
+        <name>spark.sql.warehouse.dir</name>
+        <value>s3a://raw-data/warehouse</value>
+        <description>Location of Hive warehouse directory</description>
+    </property>
+    
+    <property>
+        <name>spark.sql.catalogImplementation</name>
+        <value>hive</value>
+        <description>Use Hive catalog</description>
+    </property>
+    
+    <property>
+        <name>spark.hadoop.hive.metastore.uris</name>
+        <value>thrift://hive-metastore:9083</value>
+        <description>URI for Hive metastore</description>
+    </property>
+    
+    <!-- Spark configuration for connecting to MinIO -->
+    <property>
+        <name>spark.hadoop.fs.s3a.endpoint</name>
+        <value>http://minio:9000</value>
+        <description>MinIO endpoint</description>
+    </property>
+    
+    <property>
+        <name>spark.hadoop.fs.s3a.access.key</name>
+        <value>minioadmin</value>
+        <description>MinIO access key</description>
+    </property>
+    
+    <property>
+        <name>spark.hadoop.fs.s3a.secret.key</name>
+        <value>minioadmin</value>
+        <description>MinIO secret key</description>
+    </property>
+    
+    <property>
+        <name>spark.hadoop.fs.s3a.path.style.access</name>
+        <value>true</value>
+        <description>Use path-style access for S3</description>
+    </property>
+    
+    <property>
+        <name>spark.hadoop.fs.s3a.impl</name>
+        <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+        <description>S3A filesystem implementation</description>
+    </property>
+    
+    <property>
+        <name>spark.hadoop.fs.s3a.connection.ssl.enabled</name>
+        <value>false</value>
+        <description>Disable SSL for local MinIO</description>
+    </property>
+    
+    <!-- Delta Lake configuration -->
+    <property>
+        <name>spark.sql.extensions</name>
+        <value>io.delta.sql.DeltaSparkSessionExtension</value>
+        <description>Delta Lake SQL extensions</description>
+    </property>
+    
+    <property>
+        <name>spark.sql.catalog.spark_catalog</name>
+        <value>org.apache.spark.sql.delta.catalog.DeltaCatalog</value>
+        <description>Delta Lake catalog implementation</description>
+    </property>
+</configuration>
