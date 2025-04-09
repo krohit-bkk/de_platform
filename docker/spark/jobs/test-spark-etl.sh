@@ -15,6 +15,8 @@ echo "Submitting sample ETL job..."
 /opt/bitnami/spark/bin/spark-submit \
   --master spark://spark-master:7077 \
   --conf spark.jars.ivy=/tmp/.ivy \
+  --conf spark.sql.catalogImplementation=hive \
+  --conf "spark.hadoop.hive.metastore.uris=thrift://hive-metastore:9083" \
   --conf "spark.hadoop.fs.s3a.endpoint=http://minio:9000" \
   --conf "spark.hadoop.fs.s3a.access.key=minioadmin" \
   --conf "spark.hadoop.fs.s3a.secret.key=minioadmin" \

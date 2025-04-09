@@ -76,31 +76,17 @@ function start_all(){
   all 
 }
 
-# Login in hive-metastore as root 
+# Installing netcat and ss on HMS to check connectivity
 docker exec -it -u root hive-metastore bash 
 apt update && apt install iproute2 -y && apt install netcat
 ss -ltnp | grep 10000
 nc -zv hive-metastore 9083
 
-# DOCKER COMPOSE
-# Base
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml up -d
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml down -v
+# Installing delta-spark dependency for pyspark 
+pip install delta-spark==2.2.0
 
-# Postgres-test
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-postgres.yml up -d
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-postgres.yml down -v postgres
-
-# MinIO
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml down -v minio
-
-# Hive Metastore
-chmod -R 777 ${PROJECT_ROOT}/data/hive_data/hive-tmp
-
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d hive-metastore
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml down -v hive-metastore
-
+# Creating a table on S3 bucket - upload the data file at S3 bucket manually via UI and followed by
+docker exec -it -u root hive-metastore bash 
 -- Create hive table
 CREATE TABLE default.sample(
   id INTEGER,
@@ -122,17 +108,75 @@ a.id    a.code  a.name
 2       B       Bar
 Time taken: 0.094 seconds, Fetched: 2 row(s)
 
-# Test Metastore
-sudo rm -rf ./data/postgres_data && mkdir -p ./data/postgres_data && chmod -R 777 ./data/postgres_data
-
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d metastore-test
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml down -v metastore-test
-
-# Connection refused for HS2
+# Connection refused for HS2 - NOT pursuing in this setup
 https://stackoverflow.com/questions/68985195/could-not-open-connection-to-the-hs2-server
 
-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
-
-
+# Test Spark-Hive integration
 docker rm -f spark-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-test && docker logs -f spark-test
+
+# Spark-Deltalake-HMS-MinIO Integration - Hive doesn't work with Delta
 docker rm -f delta-lake-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d delta-lake-test && docker logs -f delta-lake-test
+
+# Run this on spark-master to test tables from HMS and DeltaLake
+docker exec -it -u root spark-master bash
+pip install delta-spark==2.2.0
+x='
+from pyspark.sql import SparkSession
+from delta.tables import DeltaTable
+import os
+
+def main():
+    """
+    Sample Delta Lake job that demonstrates:
+    1. Creating a Delta table
+    2. Performing ACID transactions (insert, update, delete)
+    3. Time-travel capabilities
+    4. Registering the Delta table in the Hive Metastore
+    """
+    # Initialize Spark session with Delta Lake support
+    spark = SparkSession.builder \
+        .appName("Delta Lake Demo") \
+        .config("spark.jars.ivy","/tmp/.ivy") \
+        .config("spark.sql.warehouse.dir", "s3a://delta-lake/warehouse") \
+        .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
+        .config("spark.hadoop.fs.s3a.access.key", "minioadmin") \
+        .config("spark.hadoop.fs.s3a.secret.key", "minioadmin") \
+        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
+        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
+        .enableHiveSupport() \
+        .getOrCreate()
+   
+    spark.sql("SHOW TABLES").show(truncate=False)
+    spark.sql("SELECT * FROM sample_sales").show(truncate=False)
+    spark.sql("SELECT * FROM delta_products").show(truncate=False)
+    spark.stop()
+    
+if __name__ == "__main__":
+    main()
+'
+
+echo -e "${x}" > test.py
+
+/opt/bitnami/spark/bin/spark-submit \
+  --master spark://spark-master:7077 \
+  --conf spark.jars.ivy=/tmp/.ivy \
+  --conf spark.sql.catalogImplementation=hive \
+  --conf "spark.hadoop.hive.metastore.uris=thrift://hive-metastore:9083" \
+  --conf "spark.hadoop.fs.s3a.endpoint=http://minio:9000" \
+  --conf "spark.hadoop.fs.s3a.access.key=minioadmin" \
+  --conf "spark.hadoop.fs.s3a.secret.key=minioadmin" \
+  --conf "spark.hadoop.fs.s3a.path.style.access=true" \
+  --conf "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem" \
+  --conf "spark.hadoop.fs.s3a.connection.ssl.enabled=false" \
+  --conf "spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension" \
+  --conf "spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog" \
+  --conf "spark.driver.extraJavaOptions=-Dlog4j.logger.org.apache=WARN" \
+  --conf "spark.executor.extraJavaOptions=-Dlog4j.logger.org.apache=WARN" \
+  --conf "spark.driver.extraJavaOptions=-Dlog4j.rootCategory=WARN,console" \
+  --conf "spark.driver.extraJavaOptions=-Dlog4j.configuration=file:/opt/bitnami/spark/conf/log4j.properties" \
+  --jars /opt/bitnami/spark/jars/delta-core_2.12-2.2.0,/opt/bitnami/spark/jars/delta-storage-2.2.0.jar \
+  /opt/bitnami/spark/test.py
+  
