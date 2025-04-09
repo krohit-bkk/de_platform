@@ -9,6 +9,9 @@
 ./data/hive_hs2_data/
 ./data/minio_data/
 ./data/sample_data/
+./data/hive_data/hive-tmp/
+./data/hive_hs2_data/
+./data/minio_data/
 
 # env files
 .env.evaluated
