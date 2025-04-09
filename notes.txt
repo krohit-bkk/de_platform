@@ -111,6 +111,8 @@ Time taken: 0.094 seconds, Fetched: 2 row(s)
 # Connection refused for HS2 - NOT pursuing in this setup
 https://stackoverflow.com/questions/68985195/could-not-open-connection-to-the-hs2-server
 
+# SPARK TESTING 
+# #############
 # Test Spark-Hive integration
 docker rm -f spark-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-test && docker logs -f spark-test
 
@@ -126,36 +128,36 @@ from delta.tables import DeltaTable
 import os
 
 def main():
-    """
-    Sample Delta Lake job that demonstrates:
-    1. Creating a Delta table
-    2. Performing ACID transactions (insert, update, delete)
-    3. Time-travel capabilities
-    4. Registering the Delta table in the Hive Metastore
-    """
-    # Initialize Spark session with Delta Lake support
-    spark = SparkSession.builder \
-        .appName("Delta Lake Demo") \
-        .config("spark.jars.ivy","/tmp/.ivy") \
-        .config("spark.sql.warehouse.dir", "s3a://delta-lake/warehouse") \
-        .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
-        .config("spark.hadoop.fs.s3a.access.key", "minioadmin") \
-        .config("spark.hadoop.fs.s3a.secret.key", "minioadmin") \
-        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
-        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-        .enableHiveSupport() \
-        .getOrCreate()
-   
-    spark.sql("SHOW TABLES").show(truncate=False)
-    spark.sql("SELECT * FROM sample_sales").show(truncate=False)
-    spark.sql("SELECT * FROM delta_products").show(truncate=False)
-    spark.stop()
+  """
+  Sample Delta Lake job that demonstrates:
+  1. Creating a Delta table
+  2. Performing ACID transactions (insert, update, delete)
+  3. Time-travel capabilities
+  4. Registering the Delta table in the Hive Metastore
+  """
+  # Initialize Spark session with Delta Lake support
+  spark = SparkSession.builder \
+    .appName("Delta Lake Demo") \
+    .config("spark.jars.ivy","/tmp/.ivy") \
+    .config("spark.sql.warehouse.dir", "s3a://delta-lake/warehouse") \
+    .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
+    .config("spark.hadoop.fs.s3a.access.key", "minioadmin") \
+    .config("spark.hadoop.fs.s3a.secret.key", "minioadmin") \
+    .config("spark.hadoop.fs.s3a.path.style.access", "true") \
+    .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+    .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
+    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
+    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
+    .enableHiveSupport() \
+    .getOrCreate()
+  
+  spark.sql("SHOW TABLES").show(truncate=False)
+  spark.sql("SELECT * FROM sample_sales").show(truncate=False)
+  spark.sql("SELECT * FROM delta_products").show(truncate=False)
+  spark.stop()
     
 if __name__ == "__main__":
-    main()
+  main()
 '
 
 echo -e "${x}" > test.py
@@ -180,3 +182,67 @@ echo -e "${x}" > test.py
   --jars /opt/bitnami/spark/jars/delta-core_2.12-2.2.0,/opt/bitnami/spark/jars/delta-storage-2.2.0.jar \
   /opt/bitnami/spark/test.py
   
+# Trying pyspark shell to check tables 
+root@c0bada8b642f:/opt/bitnami/spark# /opt/bitnami/spark/bin/pyspark \
+  --master spark://spark-master:7077 \
+  --conf spark.jars.ivy=/tmp/.ivy \
+  --conf spark.sql.catalogImplementation=hive \
+  --conf "spark.hadoop.hive.metastore.uris=thrift://hive-metastore:9083" \
+  --conf "spark.hadoop.fs.s3a.endpoint=http://minio:9000" \
+  --conf "spark.hadoop.fs.s3a.access.key=minioadmin" \
+  --conf "spark.hadoop.fs.s3a.secret.key=minioadmin" \
+  --conf "spark.hadoop.fs.s3a.path.style.access=true" \
+  --conf "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem" \
+  --conf "spark.hadoop.fs.s3a.connection.ssl.enabled=false" \
+  --conf "spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension" \
+  --conf "spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog" \
+  --conf "spark.driver.extraJavaOptions=-Dlog4j.logger.org.apache=WARN" \
+  --conf "spark.executor.extraJavaOptions=-Dlog4j.logger.org.apache=WARN" \
+  --conf "spark.driver.extraJavaOptions=-Dlog4j.rootCategory=WARN,console" \
+  --conf "spark.driver.extraJavaOptions=-Dlog4j.configuration=file:/opt/bitnami/spark/conf/log4j.properties" \
+  --jars /opt/bitnami/spark/jars/delta-core_2.12-2.2.0,/opt/bitnami/spark/jars/delta-storage-2.2.0.jar
+Python 3.8.15 (default, Oct 25 2022, 21:42:05) 
+[GCC 10.2.1 20210110] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+ERROR StatusLogger Reconfiguration failed: No configuration found for '59f95c5d' at 'null' in 'null'
+ERROR StatusLogger Reconfiguration failed: No configuration found for 'Default' at 'null' in 'null'
+25/04/09 06:51:24 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /__ / .__/\_,_/_/ /_/\_\   version 3.3.0
+      /_/
+
+Using Python version 3.8.15 (default, Oct 25 2022 21:42:05)
+Spark context Web UI available at http://c0bada8b642f:4040
+Spark context available as 'sc' (master = spark://spark-master:7077, app id = app-20250409065126-0008).
+SparkSession available as 'spark'.
+>>> 
+>>> spark.sql("SHOW TABLES").show(truncate=False)
+2025-04-09 06:51:47,039 Thread-5 ERROR Reconfiguration failed: No configuration found for '68665119' at 'null' in 'null'
++---------+--------------+-----------+                                          
+|namespace|tableName     |isTemporary|
++---------+--------------+-----------+
+|default  |delta_products|false      |
+|default  |sample        |false      |
+|default  |sample2       |false      |
+|default  |sample_sales  |false      |
++---------+--------------+-----------+
+
+>>> 
+>>> spark.sql("SELECT * FROM delta_products").show(truncate=False)
+25/04/09 06:52:09 WARN MetricsConfig: Cannot locate configuration: tried hadoop-metrics2-s3a-file-system.properties,hadoop-metrics2.properties
+25/04/09 06:52:12 WARN package: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
++---+------------+------+----------+                                            
+|id |product_name|price |sale_date |
++---+------------+------+----------+
+|7  |Product G   |175.25|2023-01-21|
+|6  |Product F   |250.0 |2023-01-20|
+|3  |Product C   |200.0 |2023-01-17|
+|4  |Product D   |300.0 |2023-01-18|
+|1  |Product A   |100.5 |2023-01-15|
+|2  |Product B   |200.75|2023-01-16|
++---+------------+------+----------+
