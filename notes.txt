@@ -33,7 +33,10 @@ function reset_pg(){
 
 # Clean Setup
 function clean_all(){
-  # Clean up Hive - HMS & HS2
+  # Clean up Trino cluster
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down -v
+
+  # Clean up Spark cluster
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml down -v
 
   # Clean up Hive - HMS & HS2
@@ -71,6 +74,9 @@ function start_all(){
 
   # Start up Spark Services
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-master spark-worker-1 spark-worker-2
+
+  # Start up Trino Services
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-coordinator trino-worker-1 trino-worker-2
 
   # Print all 
   all 
