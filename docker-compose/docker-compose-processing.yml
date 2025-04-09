@@ -5,6 +5,7 @@ services:
   spark-master:
     image: bitnami/spark:3.3.0
     container_name: spark-master
+    user: root
     ports:
       - "8080:8080"
       - "7077:7077"
@@ -21,9 +22,12 @@ services:
       - ../docker/spark/delta-lake:/opt/spark/delta-lake
       # - ../docker/spark/lib/hadoop-aws-3.2.0.jar:/opt/bitnami/spark/jars/hadoop-aws-3.2.0.jar
       - ../docker/spark/lib/delta-core_2.12-2.2.0.jar:/opt/bitnami/spark/jars/delta-core_2.12-2.2.0
+      - ../docker/spark/lib/delta-storage-2.2.0.jar:/opt/bitnami/spark/jars/delta-storage-2.2.0.jar
       # - ../docker/spark/lib/aws-java-sdk-bundle-1.11.375.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.11.375.jar
       - spark_data:/bitnami
-    command: /bin/bash -c "/opt/bitnami/setup-spark.sh && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh && tail -f /dev/null"
+    # Provide installation steps in setup-spark.sh and uncomment the commented command 
+    # command: /bin/bash -c "/opt/bitnami/setup-spark.sh && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh && tail -f /dev/null"
+    command: /bin/bash -c "/opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh && tail -f /dev/null"
     networks:
       - data_platform_network
 
@@ -45,7 +49,9 @@ services:
       - ../docker/spark/conf/spark-defaults.xml:/opt/bitnami/spark/conf/spark-defaults.xml
       - ../docker/spark/setup-spark.sh:/opt/bitnami/setup-spark.sh
       - spark_data:/bitnami
-    command: /bin/bash -c "/opt/bitnami/setup-spark.sh && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
+    # Provide installation steps in setup-spark.sh and uncomment the commented command 
+    # command: /bin/bash -c "/opt/bitnami/setup-spark.sh && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
+    command: /bin/bash -c "/opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
     networks:
       - data_platform_network
 
@@ -67,7 +73,9 @@ services:
       - ../docker/spark/conf/spark-defaults.xml:/opt/bitnami/spark/conf/spark-defaults.xml
       - ../docker/spark/setup-spark.sh:/opt/bitnami/spark/setup-spark.sh
       - spark_data:/bitnami
-    command: /bin/bash -c "/opt/bitnami/spark/setup-spark.sh && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
+    # Provide installation steps in setup-spark.sh and uncomment the commented command 
+    # command: /bin/bash -c "/opt/bitnami/spark/setup-spark.sh && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
+    command: /bin/bash -c "/opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
     networks:
       - data_platform_network
 
@@ -79,9 +87,11 @@ services:
     depends_on:
       - spark-master
     volumes:
-      - ../docker/spark/test-spark-etl.sh:/opt/bitnami/spark/test-spark-etl.sh
+      - ../docker/spark/jobs/test-spark-etl.sh:/opt/bitnami/spark/test-spark-etl.sh
       - ../docker/spark/jobs:/opt/spark/jobs
       - ../docker/spark/lib/delta-core_2.12-2.2.0.jar:/opt/bitnami/spark/jars/delta-core_2.12-2.2.0
+      - ../docker/spark/lib/delta-storage-2.2.0.jar:/opt/bitnami/spark/jars/delta-storage-2.2.0.jar
+      - ../docker/spark/conf/log4j.properties:/opt/bitnami/spark/conf/log4j.properties
     entrypoint: ["/bin/bash", "/opt/bitnami/spark/test-spark-etl.sh"]
     networks:
       - data_platform_network
@@ -91,11 +101,15 @@ services:
   delta-lake-test:
     image: bitnami/spark:3.3.0
     container_name: delta-lake-test
+    user: root
     depends_on:
       - spark-master
     volumes:
       - ../docker/spark/delta-lake/test-delta-lake.sh:/test-delta-lake.sh
       - ../docker/spark/delta-lake:/opt/spark/delta-lake
+      - ../docker/spark/lib/delta-core_2.12-2.2.0.jar:/opt/bitnami/spark/jars/delta-core_2.12-2.2.0
+      - ../docker/spark/lib/delta-storage-2.2.0.jar:/opt/bitnami/spark/jars/delta-storage-2.2.0.jar
+      - ../docker/spark/conf/log4j.properties:/opt/bitnami/spark/conf/log4j.properties
     entrypoint: ["/bin/bash", "/test-delta-lake.sh"]
     networks:
       - data_platform_network

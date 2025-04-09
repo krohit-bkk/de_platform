@@ -5,7 +5,7 @@
 echo "Setting up Spark environment..."
 install_packages curl
 
-echo "wget installed - [$$?]"
+echo "Curl installed? [$$?]"
 
 # Create directories for jars
 mkdir -p /opt/bitnami/spark/jars

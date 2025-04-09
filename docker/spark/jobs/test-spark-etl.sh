@@ -23,6 +23,8 @@ echo "Submitting sample ETL job..."
   --conf "spark.hadoop.fs.s3a.connection.ssl.enabled=false" \
   --conf "spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension" \
   --conf "spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog" \
+  --conf "spark.driver.extraJavaOptions=-Dlog4j.rootCategory=WARN,console" \
+  --conf "spark.driver.extraJavaOptions=-Dlog4j.configuration=file:/opt/bitnami/spark/conf/log4j.properties" \
   --jars /opt/bitnami/spark/jars/delta-core_2.12-2.2.0 \
   /opt/spark/jobs/sample_etl.py 
 

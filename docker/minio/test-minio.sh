@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # This script tests MinIO functionality by uploading and downloading a test file
-
 echo "Testing MinIO functionality..."
+sleep 10
 
 # Create a test file
 echo "Creating test file..."

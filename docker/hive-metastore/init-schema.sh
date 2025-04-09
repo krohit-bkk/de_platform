@@ -24,6 +24,7 @@ sleep 15
 
 # Create default database if needed
 echo ">>>> Creating default database..."
-$HIVE_HOME/bin/hive -e "CREATE DATABASE IF NOT EXISTS default;"
+$HIVE_HOME/bin/hive -v -e "CREATE DATABASE IF NOT EXISTS default;"
+$HIVE_HOME/bin/hive -v -e "SHOW DATABASES;"
 
 echo -e "\n\n>>>> Hive services started successfully!\nMetastore PID: $(pgrep -f 'metastore')\n\n"

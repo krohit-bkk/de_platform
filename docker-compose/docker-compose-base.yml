@@ -62,8 +62,8 @@ services:
       - postgres_data:/mnt/fake1
       - minio_data:/mnt/fake2
       - hive_data:/mnt/fake3
-      - hive_hs2_data:/mnt/fake3
-      - spark_data:/mnt/fake4
+      - hive_hs2_data:/mnt/fake4
+      - spark_data:/mnt/fake5
     networks:
       - data_platform_net
       

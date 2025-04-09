@@ -18,6 +18,7 @@ function nv(){
 
 # Print all
 function all(){
+  echo ""
   docker ps -a
   echo ""
   nv
@@ -30,6 +31,50 @@ function reset_pg(){
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d postgres
 }
 
+# Clean Setup
+function clean_all(){
+  # Clean up Hive - HMS & HS2
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml down -v
+
+  # Clean up Hive - HMS & HS2
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml down -v
+  rm -rf ${PROJECT_ROOT}/postgres_data && mkdir -p ${PROJECT_ROOT}/postgres_data && chmod -R 777 ${PROJECT_ROOT}/postgres_data
+  rm -rf ${PROJECT_ROOT}/postgres_alt  && mkdir -p ${PROJECT_ROOT}/postgres_alt  && chmod -R 777 ${PROJECT_ROOT}/postgres_alt
+  
+  # Clean up MinIO
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml down -v
+  rm -rf ${PROJECT_ROOT}/minio_data
+
+  # Clean up Base
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml down -v
+
+  # Clean up Docker Volumes
+  docker volume rm -f hive_data minio_data postgres_data postgres_alt
+
+  # Clean up Docker Network
+  docker volume rm -f data_platform_network
+
+  # Print all
+  all
+}
+
+# Start Setup
+function start_all(){
+  # Start up Base
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml up -d
+
+  # Start up MinIO
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d
+
+  # Start up Hive - HMS & HS2
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d hive-metastore
+
+  # Start up Spark Services
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-master spark-worker-1 spark-worker-2
+
+  # Print all 
+  all 
+}
 
 # Login in hive-metastore as root 
 docker exec -it -u root hive-metastore bash 
@@ -85,3 +130,9 @@ docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-meta
 
 # Connection refused for HS2
 https://stackoverflow.com/questions/68985195/could-not-open-connection-to-the-hs2-server
+
+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
+
+
+docker rm -f spark-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-test && docker logs -f spark-test
+docker rm -f delta-lake-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d delta-lake-test && docker logs -f delta-lake-test

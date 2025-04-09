@@ -13,6 +13,7 @@ def main():
     # Initialize Spark session with Delta Lake support
     spark = SparkSession.builder \
         .appName("Delta Lake Demo") \
+        .config("spark.jars.ivy","/tmp/.ivy") \
         .config("spark.sql.warehouse.dir", "s3a://delta-lake/warehouse") \
         .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
         .config("spark.hadoop.fs.s3a.access.key", "minioadmin") \
