@@ -246,3 +246,14 @@ SparkSession available as 'spark'.
 |1  |Product A   |100.5 |2023-01-15|
 |2  |Product B   |200.75|2023-01-16|
 +---+------------+------+----------+
+
+
+
+# TRINO Specifics
+# Start Trino Cluster
+alias start_trino='docker rm -f trino-coordinator trino-worker-1 trino-worker-2 && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down -v && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-coordinator trino-worker-1 trino-worker-2 && docker logs -f trino-coordinator'
+start_trino
+
+# Test Trino with HMS 
+alias test_trino='docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down trino-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-test && docker logs -f trino-test'
+test_trino
