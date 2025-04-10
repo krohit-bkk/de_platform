@@ -82,6 +82,9 @@ function start_all(){
   all 
 }
 
+# Run minio-client to upload some sample data for Hive at location - s3a://raw-data/sample_data/
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d minio-client && docker logs -f minio-client
+
 # Installing netcat and ss on HMS to check connectivity
 docker exec -it -u root hive-metastore bash 
 apt update && apt install iproute2 -y && apt install netcat
@@ -94,7 +97,7 @@ pip install delta-spark==2.2.0
 # Creating a table on S3 bucket - upload the data file at S3 bucket manually via UI and followed by
 docker exec -it -u root hive-metastore bash 
 -- Create hive table
-CREATE TABLE default.sample(
+CREATE EXTERNAL TABLE default.sample(
   id INTEGER,
   code STRING,
   name STRING
@@ -102,17 +105,17 @@ CREATE TABLE default.sample(
 ROW FORMAT DELIMITED
 FIELDS TERMINATED BY ","
 LINES TERMINATED BY  "\n"
-LOCATION "s3a://raw-data/sample_data";
+LOCATION "s3a://raw-data/sample_data"; 
 
 set hive.cli.print.header=true;
-hive>
-    >
-    > SELECT * FROM sample a;
-OK
-a.id    a.code  a.name
-1       A       Foo
-2       B       Bar
-Time taken: 0.094 seconds, Fetched: 2 row(s)
+SELECT * FROM sample a;
+-- OK
+-- a.id    a.code  a.name
+-- 1       A       Foo
+-- 2       B       Bar
+-- Time taken: 0.094 seconds, Fetched: 2 row(s)
+
+CREATE TABLE sample2 AS SELECT CONCAT(id, "~", code) AS spl_id, * FROM sample;
 
 # Connection refused for HS2 - NOT pursuing in this setup
 https://stackoverflow.com/questions/68985195/could-not-open-connection-to-the-hs2-server
@@ -125,7 +128,7 @@ docker rm -f spark-test && docker-compose --env-file .env.evaluated -f ./docker-
 # Spark-Deltalake-HMS-MinIO Integration - Hive doesn't work with Delta
 docker rm -f delta-lake-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d delta-lake-test && docker logs -f delta-lake-test
 
-# Run this on spark-master to test tables from HMS and DeltaLake
+# Run PySpark on spark-master to test tables from HMS and DeltaLake
 docker exec -it -u root spark-master bash
 pip install delta-spark==2.2.0
 x='
@@ -253,6 +256,331 @@ SparkSession available as 'spark'.
 |2  |Product B   |200.75|2023-01-16|
 +---+------------+------+----------+
 
+# Deltalake application output
+kumarrohit@Kumars-Mac-mini de_platform % docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-test && docker logs -f spark-test
+WARN[0000] Found orphan containers ([hive-metastore postgres minio-test minio-client minio dummy]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+[+] Running 3/3
+ ✔ Container spark-master                                                                                                                                    Running                                                                                                       0.0s
+ ✔ Container spark-test                                                                                                                                      Started                                                                                                       0.0s
+ ! spark-test The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested                                                                                                               0.0s
+Testing Spark ETL job...
+Waiting for Spark master to be ready...
+-rw-r--r-- 1 root root 3141 Apr 10 04:32 /opt/spark/jobs/sample_etl.py
+Submitting sample ETL job...
+25/04/10 09:25:01 WARN org.apache.hadoop.util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+>>>> Inside main!
+>>>> Spark session created main!
+Creating sample data...
+25/04/10 09:25:13 WARN org.apache.hadoop.metrics2.impl.MetricsConfig: Cannot locate configuration: tried hadoop-metrics2-s3a-file-system.properties,hadoop-metrics2.properties
+Sample data:
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
+|  3|   Product C|150.25|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
+|  5|   Product E| 175.5|2023-01-19|
++---+------------+------+----------+
+
+Performing transformations...
+Transformed data:
++---+------------+------+----------+------------------+-----------+
+| id|product_name| price| sale_date|    price_with_tax|data_source|
++---+------------+------+----------+------------------+-----------+
+|  1|   Product A| 100.5|2023-01-15|110.55000000000001| sample_etl|
+|  2|   Product B|200.75|2023-01-16|220.82500000000002| sample_etl|
+|  3|   Product C|150.25|2023-01-17|           165.275| sample_etl|
+|  4|   Product D| 300.0|2023-01-18|             330.0| sample_etl|
+|  5|   Product E| 175.5|2023-01-19|            193.05| sample_etl|
++---+------------+------+----------+------------------+-----------+
+
+Writing data to MinIO...
+Creating Hive table...
+25/04/10 09:26:15 WARN org.apache.hadoop.hive.ql.session.SessionState: METASTORE_FILTER_HOOK will be ignored, since hive.security.authorization.manager is set to instance of HiveAuthorizerFactory.
+Verifying table creation by querying data:
+root
+ |-- id: long (nullable = true)
+ |-- product_name: string (nullable = true)
+ |-- price: double (nullable = true)
+ |-- sale_date: string (nullable = true)
+ |-- price_with_tax: double (nullable = true)
+ |-- data_source: string (nullable = false)
+
+root
+ |-- id: long (nullable = true)
+ |-- product_name: string (nullable = true)
+ |-- price: double (nullable = true)
+ |-- sale_date: string (nullable = true)
+ |-- price_with_tax: double (nullable = true)
+ |-- data_source: string (nullable = true)
+
++---+------------+------+----------+------------------+-----------+
+| id|product_name| price| sale_date|    price_with_tax|data_source|
++---+------------+------+----------+------------------+-----------+
+|  3|   Product C|150.25|2023-01-17|           165.275| sample_etl|
+|  4|   Product D| 300.0|2023-01-18|             330.0| sample_etl|
+|  5|   Product E| 175.5|2023-01-19|            193.05| sample_etl|
+|  1|   Product A| 100.5|2023-01-15|110.55000000000001| sample_etl|
+|  2|   Product B|200.75|2023-01-16|220.82500000000002| sample_etl|
++---+------------+------+----------+------------------+-----------+
+
+Table information:
++----------------------------+-----------------------------------------------------------+-------+
+|col_name                    |data_type                                                  |comment|
++----------------------------+-----------------------------------------------------------+-------+
+|id                          |bigint                                                     |null   |
+|product_name                |string                                                     |null   |
+|price                       |double                                                     |null   |
+|sale_date                   |string                                                     |null   |
+|price_with_tax              |double                                                     |null   |
+|data_source                 |string                                                     |null   |
+|                            |                                                           |       |
+|# Detailed Table Information|                                                           |       |
+|Database                    |default                                                    |       |
+|Table                       |sample_sales                                               |       |
+|Owner                       |root                                                       |       |
+|Created Time                |Thu Apr 10 09:26:16 UTC 2025                               |       |
+|Last Access                 |UNKNOWN                                                    |       |
+|Created By                  |Spark 3.3.0                                                |       |
+|Type                        |EXTERNAL                                                   |       |
+|Provider                    |hive                                                       |       |
+|Table Properties            |[transient_lastDdlTime=1744277176]                         |       |
+|Statistics                  |3880 bytes                                                 |       |
+|Location                    |s3a://processed-data/sample_sales                          |       |
+|Serde Library               |org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe|       |
++----------------------------+-----------------------------------------------------------+-------+
+only showing top 20 rows
+
+ETL job completed successfully!
+25/04/10 09:26:23 WARN org.sparkproject.jetty.server.AbstractConnector:
+java.io.IOException: No such file or directory
+	at sun.nio.ch.NativeThread.signal(Native Method) ~[?:1.8.0_352]
+	at sun.nio.ch.ServerSocketChannelImpl.implCloseSelectableChannel(ServerSocketChannelImpl.java:291) ~[?:1.8.0_352]
+	at java.nio.channels.spi.AbstractSelectableChannel.implCloseChannel(AbstractSelectableChannel.java:241) ~[?:1.8.0_352]
+	at java.nio.channels.spi.AbstractInterruptibleChannel.close(AbstractInterruptibleChannel.java:115) ~[?:1.8.0_352]
+	at org.sparkproject.jetty.server.ServerConnector.close(ServerConnector.java:371) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.sparkproject.jetty.server.AbstractNetworkConnector.shutdown(AbstractNetworkConnector.java:104) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.sparkproject.jetty.server.Server.doStop(Server.java:444) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.sparkproject.jetty.util.component.AbstractLifeCycle.stop(AbstractLifeCycle.java:94) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.apache.spark.ui.ServerInfo.stop(JettyUtils.scala:525) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.apache.spark.ui.WebUI.$anonfun$stop$2(WebUI.scala:180) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.apache.spark.ui.WebUI.$anonfun$stop$2$adapted(WebUI.scala:180) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at scala.Option.foreach(Option.scala:407) ~[scala-library-2.12.15.jar:?]
+	at org.apache.spark.ui.WebUI.stop(WebUI.scala:180) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.apache.spark.ui.SparkUI.stop(SparkUI.scala:141) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.apache.spark.SparkContext.$anonfun$stop$6(SparkContext.scala:2085) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.apache.spark.SparkContext.$anonfun$stop$6$adapted(SparkContext.scala:2085) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at scala.Option.foreach(Option.scala:407) ~[scala-library-2.12.15.jar:?]
+	at org.apache.spark.SparkContext.$anonfun$stop$5(SparkContext.scala:2085) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.apache.spark.util.Utils$.tryLogNonFatalError(Utils.scala:1484) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.apache.spark.SparkContext.stop(SparkContext.scala:2085) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at org.apache.spark.api.java.JavaSparkContext.stop(JavaSparkContext.scala:550) ~[spark-core_2.12-3.3.0.jar:3.3.0]
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[?:1.8.0_352]
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62) ~[?:1.8.0_352]
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[?:1.8.0_352]
+	at java.lang.reflect.Method.invoke(Method.java:498) ~[?:1.8.0_352]
+	at py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:244) ~[py4j-0.10.9.5.jar:?]
+	at py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:357) ~[py4j-0.10.9.5.jar:?]
+	at py4j.Gateway.invoke(Gateway.java:282) ~[py4j-0.10.9.5.jar:?]
+	at py4j.commands.AbstractCommand.invokeMethod(AbstractCommand.java:132) ~[py4j-0.10.9.5.jar:?]
+	at py4j.commands.CallCommand.execute(CallCommand.java:79) ~[py4j-0.10.9.5.jar:?]
+	at py4j.ClientServerConnection.waitForCommands(ClientServerConnection.java:182) ~[py4j-0.10.9.5.jar:?]
+	at py4j.ClientServerConnection.run(ClientServerConnection.java:106) ~[py4j-0.10.9.5.jar:?]
+	at java.lang.Thread.run(Thread.java:750) ~[?:1.8.0_352]
+^C%
+kumarrohit@Kumars-Mac-mini de_platform %
+kumarrohit@Kumars-Mac-mini de_platform %
+kumarrohit@Kumars-Mac-mini de_platform %
+kumarrohit@Kumars-Mac-mini de_platform %
+kumarrohit@Kumars-Mac-mini de_platform % docker exec -it -u root hive-metastore bash
+root@dbe1ad60eb51:/opt/hive# hive
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/opt/hive/lib/log4j-slf4j-impl-2.17.1.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/opt/hadoop/share/hadoop/common/lib/slf4j-log4j12-1.7.25.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+SELECT * FROM sample_sales;
+Hive Session ID = 850c870a-8e16-48be-b637-a91c7a1f45a6
+
+Logging initialized using configuration in jar:file:/opt/hive/lib/hive-common-3.1.3.jar!/hive-log4j2.properties Async: true
+Hive Session ID = 4cf85d40-4c99-4f45-8f0b-125877537e02
+Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+hive> SELECT * FROM sample_sales;
+OK
+1	Product A	100.5	2023-01-15	110.55000000000001	sample_etl
+2	Product B	200.75	2023-01-16	220.82500000000002	sample_etl
+3	Product C	150.25	2023-01-17	165.275	sample_etl
+4	Product D	300.0	2023-01-18	330.0	sample_etl
+5	Product E	175.5	2023-01-19	193.05	sample_etl
+Time taken: 7.488 seconds, Fetched: 5 row(s)
+hive> exit;
+root@dbe1ad60eb51:/opt/hive#
+root@dbe1ad60eb51:/opt/hive#
+root@dbe1ad60eb51:/opt/hive# exit
+exit
+kumarrohit@Kumars-Mac-mini de_platform %
+kumarrohit@Kumars-Mac-mini de_platform % docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d delta-lake-test && docker logs -f delta-lake-test
+WARN[0000] Found orphan containers ([hive-metastore postgres minio-test minio-client minio dummy]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+[+] Running 3/3
+ ✔ Container spark-master                                                                                                                                         Running                                                                                                  0.0s
+ ✔ Container delta-lake-test                                                                                                                                      Started                                                                                                  0.0s
+ ! delta-lake-test The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested                                                                                                          0.0s
+Testing Delta Lake functionality...
+Collecting delta-spark==2.2.0
+  Downloading delta_spark-2.2.0-py3-none-any.whl (20 kB)
+Collecting importlib-metadata>=1.0.0
+  Downloading importlib_metadata-8.5.0-py3-none-any.whl (26 kB)
+Requirement already satisfied: pyspark<3.4.0,>=3.3.0 in ./python (from delta-spark==2.2.0) (3.3.0)
+Collecting zipp>=3.20
+  Downloading zipp-3.20.2-py3-none-any.whl (9.2 kB)
+Collecting py4j==0.10.9.5
+  Downloading py4j-0.10.9.5-py2.py3-none-any.whl (199 kB)
+Installing collected packages: zipp, py4j, importlib-metadata, delta-spark
+Successfully installed delta-spark-2.2.0 importlib-metadata-8.5.0 py4j-0.10.9.5 zipp-3.20.2
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+Waiting for Spark master to be ready...
+Submitting Delta Lake demo job...
+25/04/10 09:32:31 WARN org.apache.hadoop.util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Creating sample data...
+25/04/10 09:32:42 WARN org.apache.hadoop.metrics2.impl.MetricsConfig: Cannot locate configuration: tried hadoop-metrics2-s3a-file-system.properties,hadoop-metrics2.properties
+Sample data:
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
+|  3|   Product C|150.25|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
+|  5|   Product E| 175.5|2023-01-19|
++---+------------+------+----------+
+
+Writing data to Delta table...
+25/04/10 09:33:58 WARN org.apache.spark.sql.catalyst.util.package: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
+Reading Delta table:
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  3|   Product C|150.25|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
+|  5|   Product E| 175.5|2023-01-19|
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
++---+------------+------+----------+
+
+Current Delta table version:
+Version: 0
+Performing UPDATE operation...
+Data after UPDATE:
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  3|   Product C| 200.0|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
+|  5|   Product E| 175.5|2023-01-19|
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
++---+------------+------+----------+
+
+Delta table version after UPDATE:
+Version: 1
+Performing DELETE operation...
+Data after DELETE:
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
+|  3|   Product C| 200.0|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
++---+------------+------+----------+
+
+Delta table version after DELETE:
+Version: 2
+Performing INSERT operation...
+25/04/10 09:36:17 WARN org.apache.spark.sql.delta.commands.MergeIntoCommand: Merge source has SQLMetric(id: 1400, name: Some(number of source rows), value: 2) rows in initial scan but SQLMetric(id: 1401, name: Some(number of source rows (during repeated scan)), value: 0) rows in second scan
+Data after INSERT:
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  6|   Product F| 250.0|2023-01-20|
+|  7|   Product G|175.25|2023-01-21|
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
+|  3|   Product C| 200.0|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
++---+------------+------+----------+
+
+Delta table version after INSERT:
+Version: 3
+Demonstrating time-travel capability...
+Data at version 0 (original):
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  3|   Product C|150.25|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
+|  5|   Product E| 175.5|2023-01-19|
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
++---+------------+------+----------+
+
+Data at version 1 (after UPDATE):
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  3|   Product C| 200.0|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
+|  5|   Product E| 175.5|2023-01-19|
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
++---+------------+------+----------+
+
+Data at version 2 (after DELETE):
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
+|  3|   Product C| 200.0|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
++---+------------+------+----------+
+
+Delta table history:
++-------+-------------------+------+--------+---------+------------------------------------------------------------------------------------------------------------+----+--------+---------+-----------+--------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------+-----------------------------------+
+|version|timestamp          |userId|userName|operation|operationParameters                                                                                         |job |notebook|clusterId|readVersion|isolationLevel|isBlindAppend|operationMetrics                                                                                                                                                                                                                                                                                             |userMetadata|engineInfo                         |
++-------+-------------------+------+--------+---------+------------------------------------------------------------------------------------------------------------+----+--------+---------+-----------+--------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------+-----------------------------------+
+|3      |2025-04-10 09:36:17|null  |null    |MERGE    |{predicate -> (old.id = new.id), matchedPredicates -> [], notMatchedPredicates -> [{"actionType":"insert"}]}|null|null    |null     |2          |Serializable  |false        |{numTargetRowsCopied -> 0, numTargetRowsDeleted -> 0, numTargetFilesAdded -> 2, executionTimeMs -> 11188, numTargetRowsInserted -> 2, scanTimeMs -> 0, numTargetRowsUpdated -> 0, numOutputRows -> 2, numTargetChangeFilesAdded -> 0, numSourceRows -> 2, numTargetFilesRemoved -> 0, rewriteTimeMs -> 11088}|null        |Apache-Spark/3.3.0 Delta-Lake/2.2.0|
+|2      |2025-04-10 09:35:47|null  |null    |DELETE   |{predicate -> ["(id = 5L)"]}                                                                                |null|null    |null     |1          |Serializable  |false        |{numRemovedFiles -> 1, numCopiedRows -> 2, numAddedChangeFiles -> 0, executionTimeMs -> 9713, numDeletedRows -> 1, scanTimeMs -> 6518, numAddedFiles -> 1, rewriteTimeMs -> 3191}                                                                                                                            |null        |Apache-Spark/3.3.0 Delta-Lake/2.2.0|
+|1      |2025-04-10 09:35:12|null  |null    |UPDATE   |{predicate -> (id#818L = 3)}                                                                                |null|null    |null     |0          |Serializable  |false        |{numRemovedFiles -> 1, numCopiedRows -> 2, numAddedChangeFiles -> 0, executionTimeMs -> 12252, scanTimeMs -> 7763, numAddedFiles -> 1, numUpdatedRows -> 1, rewriteTimeMs -> 4393}                                                                                                                           |null        |Apache-Spark/3.3.0 Delta-Lake/2.2.0|
+|0      |2025-04-10 09:33:54|null  |null    |WRITE    |{mode -> Overwrite, partitionBy -> []}                                                                      |null|null    |null     |null       |Serializable  |false        |{numFiles -> 2, numOutputRows -> 5, numOutputBytes -> 2648}                                                                                                                                                                                                                                                  |null        |Apache-Spark/3.3.0 Delta-Lake/2.2.0|
++-------+-------------------+------+--------+---------+------------------------------------------------------------------------------------------------------------+----+--------+---------+-----------+--------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------+-----------------------------------+
+
+Registering Delta table in Hive metastore...
+25/04/10 09:37:23 WARN org.apache.spark.sql.hive.HiveExternalCatalog: Couldn't find corresponding Hive SerDe for data source provider delta. Persisting data source table `default`.`delta_products` into Hive metastore in Spark SQL specific format, which is NOT compatible with Hive.
+25/04/10 09:37:23 WARN org.apache.hadoop.hive.ql.session.SessionState: METASTORE_FILTER_HOOK will be ignored, since hive.security.authorization.manager is set to instance of HiveAuthorizerFactory.
+Verifying table creation:
++---------+--------------+-----------+
+|namespace|     tableName|isTemporary|
++---------+--------------+-----------+
+|  default|delta_products|      false|
+|  default|        sample|      false|
+|  default|       sample2|      false|
+|  default|  sample_sales|      false|
++---------+--------------+-----------+
+
++---+------------+------+----------+
+| id|product_name| price| sale_date|
++---+------------+------+----------+
+|  6|   Product F| 250.0|2023-01-20|
+|  7|   Product G|175.25|2023-01-21|
+|  1|   Product A| 100.5|2023-01-15|
+|  2|   Product B|200.75|2023-01-16|
+|  3|   Product C| 200.0|2023-01-17|
+|  4|   Product D| 300.0|2023-01-18|
++---+------------+------+----------+
+
+Delta Lake functionality demonstration completed successfully!
 
 
 # TRINO Specifics
@@ -263,3 +591,42 @@ start_trino
 # Test Trino with HMS 
 alias test_trino='docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down trino-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-test && docker logs -f trino-test'
 test_trino
+kumarrohit@Kumars-Mac-mini de_platform % alias test_trino='docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down trino-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-test && docker logs -f trino-test'
+kumarrohit@Kumars-Mac-mini de_platform %
+kumarrohit@Kumars-Mac-mini de_platform % test_trino
+WARN[0000] Found orphan containers ([delta-lake-test spark-test spark-worker-2 spark-worker-1 spark-master hive-metastore postgres minio-test minio-client minio dummy]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+[+] Running 2/2
+ ✔ Container trino-coordinator  Running                                                                                                                                                                                                                                    0.0s
+ ✔ Container trino-test         Started                                                                                                                                                                                                                                    0.0s
+Testing Trino connectivity and queries...
+Waiting for Trino to be ready...
+Testing basic connectivity...
+Apr 10, 2025 9:42:05 AM org.jline.utils.Log logr
+WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
+"1"
+Listing available catalogs...
+Apr 10, 2025 9:42:06 AM org.jline.utils.Log logr
+WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
+"hive"
+"system"
+Listing schemas in hive catalog...
+Apr 10, 2025 9:42:07 AM org.jline.utils.Log logr
+WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
+"default"
+"information_schema"
+Listing tables in default schema...
+Apr 10, 2025 9:42:08 AM org.jline.utils.Log logr
+WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
+"delta_products"
+"sample"
+"sample2"
+"sample_sales"
+Querying sample_sales table...
+Apr 10, 2025 9:42:09 AM org.jline.utils.Log logr
+WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
+"1","Product A","100.5","2023-01-15","110.55000000000001","sample_etl"
+"3","Product C","150.25","2023-01-17","165.275","sample_etl"
+"2","Product B","200.75","2023-01-16","220.82500000000002","sample_etl"
+"4","Product D","300.0","2023-01-18","330.0","sample_etl"
+"5","Product E","175.5","2023-01-19","193.05","sample_etl"
+Trino connectivity and query test completed successfully!

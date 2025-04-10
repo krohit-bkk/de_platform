@@ -14,6 +14,14 @@ mc alias set myminio http://minio:9000 minioadmin minioadmin
 mc mb myminio/raw-data
 echo "Created raw-data bucket"
 
+# Upload a sample file
+echo "1,A,Foo" >> sample-file.csv
+echo "2,B,Bar" >> sample-file.csv
+mc mkdir myminio/raw-data/sample_data
+mc cp sample-file.csv myminio/raw-data/sample_data/
+mc ls myminio/raw-data/sample_data/
+
+
 # Create processed data bucket
 mc mb myminio/processed-data
 echo "Created processed-data bucket"

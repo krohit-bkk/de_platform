@@ -14,6 +14,8 @@ sleep 5
 echo "Submitting Delta Lake demo job..."
 /opt/bitnami/spark/bin/spark-submit \
   --master spark://spark-master:7077 \
+  --num-executors 2 \
+  --executor-memory 700M \
   --conf spark.jars.ivy=/tmp/.ivy \
   --conf spark.sql.catalogImplementation=hive \
   --conf "spark.hadoop.hive.metastore.uris=thrift://hive-metastore:9083" \
