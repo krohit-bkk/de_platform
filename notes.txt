@@ -591,9 +591,12 @@ start_trino
 # Test Trino with HMS 
 alias test_trino='docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down trino-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-test && docker logs -f trino-test'
 test_trino
+
 kumarrohit@Kumars-Mac-mini de_platform % alias test_trino='docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down trino-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-test && docker logs -f trino-test'
 kumarrohit@Kumars-Mac-mini de_platform %
 kumarrohit@Kumars-Mac-mini de_platform % test_trino
+[+] Running 1/0
+ ✔ Container trino-test  Removed                                                                                                                                                                                                                                           0.0s
 WARN[0000] Found orphan containers ([delta-lake-test spark-test spark-worker-2 spark-worker-1 spark-master hive-metastore postgres minio-test minio-client minio dummy]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
 [+] Running 2/2
  ✔ Container trino-coordinator  Running                                                                                                                                                                                                                                    0.0s
@@ -601,32 +604,42 @@ WARN[0000] Found orphan containers ([delta-lake-test spark-test spark-worker-2 s
 Testing Trino connectivity and queries...
 Waiting for Trino to be ready...
 Testing basic connectivity...
-Apr 10, 2025 9:42:05 AM org.jline.utils.Log logr
+Apr 10, 2025 10:10:54 AM org.jline.utils.Log logr
 WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
 "1"
 Listing available catalogs...
-Apr 10, 2025 9:42:06 AM org.jline.utils.Log logr
+Apr 10, 2025 10:10:54 AM org.jline.utils.Log logr
 WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
+"delta"
 "hive"
 "system"
 Listing schemas in hive catalog...
-Apr 10, 2025 9:42:07 AM org.jline.utils.Log logr
+Apr 10, 2025 10:10:55 AM org.jline.utils.Log logr
 WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
 "default"
 "information_schema"
 Listing tables in default schema...
-Apr 10, 2025 9:42:08 AM org.jline.utils.Log logr
+Apr 10, 2025 10:10:55 AM org.jline.utils.Log logr
 WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
 "delta_products"
 "sample"
 "sample2"
 "sample_sales"
-Querying sample_sales table...
-Apr 10, 2025 9:42:09 AM org.jline.utils.Log logr
+Querying Hive-catalog table --> [hive.default.sample_sales]
+Apr 10, 2025 10:10:56 AM org.jline.utils.Log logr
 WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
 "1","Product A","100.5","2023-01-15","110.55000000000001","sample_etl"
 "3","Product C","150.25","2023-01-17","165.275","sample_etl"
 "2","Product B","200.75","2023-01-16","220.82500000000002","sample_etl"
 "4","Product D","300.0","2023-01-18","330.0","sample_etl"
 "5","Product E","175.5","2023-01-19","193.05","sample_etl"
+Querying Delta-catalog table --> [delta.default.delta_products]
+Apr 10, 2025 10:10:57 AM org.jline.utils.Log logr
+WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
+"1","Product A","100.5","2023-01-15"
+"3","Product C","200.0","2023-01-17"
+"4","Product D","300.0","2023-01-18"
+"2","Product B","200.75","2023-01-16"
+"7","Product G","175.25","2023-01-21"
+"6","Product F","250.0","2023-01-20"
 Trino connectivity and query test completed successfully!

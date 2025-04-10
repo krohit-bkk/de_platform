@@ -24,8 +24,12 @@ trino --server trino-coordinator:8080 --catalog hive --execute "SHOW SCHEMAS"
 echo "Listing tables in default schema..."
 trino --server trino-coordinator:8080 --catalog hive --schema default --execute "SHOW TABLES"
 
-# Query the sample_sales table created by Spark ETL job
-echo "Querying sample_sales table..."
-trino --server trino-coordinator:8080 --catalog hive --schema default --execute "SELECT * FROM sample_sales"
+# Query the sample_sales table created by Spark Deltalake ETL job
+echo "Querying Hive-catalog table --> [hive.default.sample_sales]"
+trino --server trino-coordinator:8080 --catalog hive --schema default --execute "SELECT * FROM hive.default.sample_sales"
+
+# Query the delta_products table created by Spark Deltalake ETL job
+echo "Querying Delta-catalog table --> [delta.default.delta_products]"
+trino --server trino-coordinator:8080 --catalog delta --schema default --execute "SELECT * FROM delta.default.delta_products"
 
 echo "Trino connectivity and query test completed successfully!"
