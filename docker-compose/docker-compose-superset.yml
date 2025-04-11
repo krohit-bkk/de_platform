@@ -25,11 +25,18 @@ services:
       ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL}
       PYTHONPATH: /app/superset_home
       SUPERSET_CONFIG_PATH: /app/superset_config.py
+      SUPERSET_FEATURE_DREMIO: "true"
     volumes:
       - ../docker/superset/config/superset_config.py:/app/superset_config.py
+      - ../docker/superset/config/datasources.yml:/app/datasources.yml
       - ../docker/superset/init-superset.sh:/app/init-superset.sh
       - superset_data:/app/superset_home
-    command: ["/bin/bash", "-c", "/app/init-superset.sh && /usr/bin/run-server.sh"]
+    command: ["/bin/bash", "-c", 
+              "pip install --force-reinstall pillow trino==0.321.0 sqlalchemy-trino==0.4.0 sqlalchemy==1.4.46
+               && chmod +x /app/init-superset.sh 
+               && /app/init-superset.sh ${SUPERSET_ADMIN_USERNAME} ${SUPERSET_ADMIN_PASSWORD}
+               && /usr/bin/run-server.sh"
+             ]
     networks:
       - data_platform_network
 

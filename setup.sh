@@ -92,7 +92,7 @@ function start_all(){
 # #########################################################################
 function reset_minio(){
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml down -v
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d 
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d minio
   psa
 }
 
@@ -117,6 +117,17 @@ start_trino
 # Test Trino with HMS 
 alias test_trino='docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down trino-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-test && docker logs -f trino-test'
 test_trino
+
+# SUPERSET TESTING - Initializes the Superset server and UI available at --> http://localhost:8088/
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-superset.yml up -d superset && docker logs -f superset
+
+# Reset Superset
+function reset_superset(){
+  rm -rf ./data/superset_data && mkdir -p ./data/superset_data && chmod -R 777 ./data/superset_data
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-superset.yml down -v superset redis 
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-superset.yml up -d superset 
+  docker logs -f superset
+}
 
 # TROUBLESHOOTING 
 # Installing netcat and ss on HMS/HS2 to check connectivity

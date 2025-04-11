@@ -1,0 +1,23 @@
+databases:
+- database_name: Trino Delta Lake
+  sqlalchemy_uri: "trino://admin@trino-coordinator:8080/delta/default?http_scheme=http"
+  extra: |
+    {
+      "disable_prepared_statements": true,
+      "engine_params": {
+        "connect_args": {
+          "source": "superset"
+        }
+      }
+    }
+- database_name: Trino Hive
+  sqlalchemy_uri: "trino://admin@trino-coordinator:8080/hive/default?http_scheme=http"
+  extra: |
+    {
+      "disable_prepared_statements": true,
+      "engine_params": {
+        "connect_args": {
+          "source": "superset"
+        }
+      }
+    }
