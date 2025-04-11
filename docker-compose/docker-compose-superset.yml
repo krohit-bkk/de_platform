@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # Redis for Superset caching
+  redis:
+    image: redis:6.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - data_platform_network
+
+  # Apache Superset for Dashboards
+  superset:
+    image: apache/superset:latest
+    container_name: superset
+    depends_on:
+      - redis
+    ports:
+      - "8088:8088"
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      ADMIN_USERNAME: ${SUPERSET_ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
+      ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL}
+      PYTHONPATH: /app/superset_home
+      SUPERSET_CONFIG_PATH: /app/superset_config.py
+    volumes:
+      - ../docker/superset/config/superset_config.py:/app/superset_config.py
+      - ../docker/superset/init-superset.sh:/app/init-superset.sh
+      - superset_data:/app/superset_home
+    command: ["/bin/bash", "-c", "/app/init-superset.sh && /usr/bin/run-server.sh"]
+    networks:
+      - data_platform_network
+
+  # Superset Test Client
+  superset-test:
+    image: curlimages/curl:latest
+    container_name: superset-test
+    depends_on:
+      - superset
+    volumes:
+      - ../docker/superset/test-superset.sh:/test-superset.sh
+    entrypoint: ["/bin/sh", "/test-superset.sh"]
+    networks:
+      - data_platform_network
+    restart: on-failure
+
+networks:
+  data_platform_network:
+    external: true
+
+volumes:
+  superset_data:
+    external: true

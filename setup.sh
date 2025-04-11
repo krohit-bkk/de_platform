@@ -4,9 +4,6 @@
 export PROJECT_ROOT=$(pwd)
 envsubst < ${PROJECT_ROOT}/.env | tee ${PROJECT_ROOT}/.env.evaluated
 
-# For Mac (make sudo as '')
-# alias sudo=''
-
 # CREATE DIRECTORIES & PERMISSIONS
 mkdir -p ${PROJECT_ROOT}/data/hive_data/{hive-tmp,hive-tmp1,lib,warehouse,sample_data} 
 mkdir -p ${PROJECT_ROOT}/data/{minio_data,postgres_data,postgres_alt,postgres_airflow_data,trino_data,superset_data,spark_data} 
@@ -36,8 +33,12 @@ function all(){
   nv
 }
 
-# Clean Setup
+# STOP ALL SERVICES
 function clean_all(){
+  # Clean up Superset
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-superset.yml down -v
+  rm -rf ${PROJECT_ROOT}/data/superset_data && mkdir -p ${PROJECT_ROOT}/data/superset_data && chmod -R 777 ${PROJECT_ROOT}/data/superset_data
+
   # Clean up Trino cluster
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down -v
 
@@ -66,13 +67,13 @@ function clean_all(){
   all
 }
 
-# Start Setup
+# START ALL SERVICES
 function start_all(){
   # Start up Base
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml up -d
 
   # Start up MinIO
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d 
 
   # Start up Hive - HMS HS2
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d hive-metastore
@@ -85,6 +86,14 @@ function start_all(){
 
   # Print all 
   all 
+}
+
+# RESET MinIO - To fix performance issue with Apple Silicon for Delta table 
+# #########################################################################
+function reset_minio(){
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml down -v
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d 
+  psa
 }
 
 # Run minio-client to upload some sample data for Hive at location - s3a://raw-data/sample_data/

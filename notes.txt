@@ -192,7 +192,7 @@ echo -e "${x}" > test.py
   /opt/bitnami/spark/test.py
   
 # Trying pyspark shell to check tables 
-root@c0bada8b642f:/opt/bitnami/spark# /opt/bitnami/spark/bin/pyspark \
+/opt/bitnami/spark/bin/pyspark \
   --master spark://spark-master:7077 \
   --conf spark.jars.ivy=/tmp/.ivy \
   --conf spark.sql.catalogImplementation=hive \
@@ -643,3 +643,68 @@ WARNING: Unable to create a system terminal, creating a dumb terminal (enable de
 "7","Product G","175.25","2023-01-21"
 "6","Product F","250.0","2023-01-20"
 Trino connectivity and query test completed successfully!
+
+# Trino CLI 
+trino --server trino-coordinator:8080
+trino> SHOW CATALOGS;
+ Catalog
+---------
+ delta
+ hive
+ system
+(3 rows)
+
+trino:> SELECT table_catalog, table_schema, table_name
+     -> FROM information_schema.tables;
+ table_catalog |    table_schema    |    table_name
+---------------+--------------------+------------------
+ delta         | information_schema | columns
+ delta         | information_schema | tables
+ delta         | information_schema | views
+ delta         | information_schema | schemata
+ delta         | information_schema | table_privileges
+ delta         | information_schema | roles
+ delta         | information_schema | applicable_roles
+ delta         | information_schema | enabled_roles
+ delta         | default            | sample
+ delta         | default            | sample2
+ delta         | default            | delta_products
+(11 rows)
+
+Query 20250411_100059_00028_zc5qq, FINISHED, 1 node
+Splits: 1 total, 1 done (100.00%)
+0.38 [12 rows, 530B] [31 rows/s, 1.36KB/s]
+
+-- CREATE DELTA TABLE IN Trino
+trino:default> CREATE TABLE delta.default.delta_products2 (
+            ->   id bigint,
+            ->   product_name varchar,
+            ->   price double,
+            ->   sale_date varchar,
+            ->   discount double
+            -> )
+            -> WITH (
+            ->   location = 's3a://delta-lake/delta_products2'
+            -> );
+CREATE TABLE
+trino:default> INSERT INTO delta.default.delta_products2 SELECT *, CASE WHEN price > 250 THEN price*0.1 ELSE 0 END AS discount FROM delta.default.delta_products;
+INSERT: 6 rows
+
+Query 20250411_095722_00025_zc5qq, FINISHED, 1 node
+Splits: 27 total, 27 done (100.00%)
+0.70 [6 rows, 5.54KB] [8 rows/s, 7.88KB/s]
+
+trino:default> SELECT * FROM delta_products2;
+ id | product_name | price  | sale_date  | discount
+----+--------------+--------+------------+----------
+  6 | Product F    |  250.0 | 2023-01-20 |      0.0
+  1 | Product A    |  100.5 | 2023-01-15 |      0.0
+  2 | Product B    | 200.75 | 2023-01-16 |      0.0
+  7 | Product G    | 175.25 | 2023-01-21 |      0.0
+  3 | Product C    |  200.0 | 2023-01-17 |      0.0
+  4 | Product D    |  300.0 | 2023-01-18 |     30.0
+(6 rows)
+
+Query 20250411_095742_00027_zc5qq, FINISHED, 1 node
+Splits: 1 total, 1 done (100.00%)
+0.25 [6 rows, 1.22KB] [24 rows/s, 4.96KB/s]

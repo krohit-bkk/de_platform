@@ -46,7 +46,15 @@ volumes:
       type: none
       device: ${PROJECT_ROOT}/data/spark_data
       o: bind
-
+  
+  superset_data:
+    name: superset_data
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PROJECT_ROOT}/data/superset_data
+      o: bind
+  
 networks:
   data_platform_net:
     name: data_platform_network
@@ -64,6 +72,7 @@ services:
       - hive_data:/mnt/fake3
       - hive_hs2_data:/mnt/fake4
       - spark_data:/mnt/fake5
+      - superset_data:/mnt/fake6
     networks:
       - data_platform_net
       

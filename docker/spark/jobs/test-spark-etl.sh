@@ -36,5 +36,5 @@ if [ $? -eq "0" ]; then
 fi 
 
 echo ">>>> Spark ETL job failed! I'll be live for 5 min so that you can debug..."
-sleep 600
+sleep 300
 exit 1

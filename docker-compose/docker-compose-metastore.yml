@@ -45,6 +45,10 @@ services:
     entrypoint: []
     networks:
       - data_platform_network
+    deploy:
+      resources:
+        limits:
+          memory: 2g
 
   # Hive Metastore Test-Client <-- This wont work as HS2 is not setup with HMS service
   metastore-test:
