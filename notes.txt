@@ -108,6 +108,7 @@ LINES TERMINATED BY  "\n"
 LOCATION "s3a://raw-data/sample_data"; 
 
 set hive.cli.print.header=true;
+set hive.execution.engine=tez;
 SELECT * FROM sample a;
 -- OK
 -- a.id    a.code  a.name

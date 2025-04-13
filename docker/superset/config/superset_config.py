@@ -105,6 +105,7 @@ ROW_LIMIT = 5000
 
 # Enable some useful features
 FEATURE_FLAGS = {
+    "ALLOW_ADHOC_SUBQUERY": True,
     "DASHBOARD_NATIVE_FILTERS": True,
     "DASHBOARD_CROSS_FILTERS": True
 }

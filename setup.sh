@@ -73,7 +73,7 @@ function start_all(){
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml up -d
 
   # Start up MinIO
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d 
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d minio minio-client
 
   # Start up Hive - HMS HS2
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d hive-metastore
@@ -84,6 +84,9 @@ function start_all(){
   # Start up Trino Services
   docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-coordinator trino-worker-1 trino-worker-2
 
+  # Start Superset
+  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-superset.yml up -d superset
+  
   # Print all 
   all 
 }
@@ -102,11 +105,11 @@ docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-stor
 # SPARK TESTING 
 # #############
 # Test Spark-Hive integration <-- Creates table default.sample_sales
-docker rm -f spark-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-test && docker logs -f spark-test
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml down spark-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-test && docker logs -f spark-test
 
-# Spark-Deltalake-HMS-MinIO Integration - Hive doesn't work with Delta completely (and that's normal)
+# Spark-Deltalake-HMS-MinIO Integration - Hive doesn't work with Delta completely (and that's a normal behavior)
 # Table would be present in HMS (and data in MinIO S3 bucket), accessible as table only from Spark or Trino 
-docker rm -f delta-lake-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d delta-lake-test && docker logs -f delta-lake-test
+docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml down delta-lake-test && docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d delta-lake-test && docker logs -f delta-lake-test
 
 # TRINO TESTING
 # #############
