@@ -30,10 +30,10 @@ services:
     command: /bin/bash -c "/opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh && tail -f /dev/null"
     networks:
       - data_platform_network
-    deploy:
-      resources:
-        limits:
-          memory: 2g
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 2g
 
 
   spark-worker-1:

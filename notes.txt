@@ -118,6 +118,70 @@ SELECT * FROM sample a;
 
 CREATE TABLE sample2 AS SELECT CONCAT(id, "~", code) AS spl_id, * FROM sample;
 
+# HIVE - Create table with Airline Data
+  # Unzip and upoad the file Airlin_Data.csv to s3a://raw-data/airline_data/ and create the table:
+CREATE DATABASE IF NOT EXISTS airline;
+USE airline;
+DROP TABLE IF EXISTS airline.AIRLINE_DATA;
+CREATE EXTERNAL TABLE airline.AIRLINE_DATA (
+  AirlineID int, 
+  ArrDel15 int, 
+  ArrDelay int, 
+  ArrDelayMinutes int, 
+  ArrTime int, 
+  ArrTimeBlk string,
+  ArrivalDelayGroups string,
+  CRSArrTime int,
+  CRSDepTime int,
+  CancellationCode string,
+  Cancelled int,
+  Carrier string,
+  DayOfWeek int,
+  DayofMonth int,
+  DepDel15 int,
+  DepDelay string,
+  DepDelayMinutes int,
+  DepTime int,
+  DepTimeBlk string,
+  DepartureDelayGroups string,
+  Dest string,
+  DestAirportID int,
+  DestAirportSeqID int,
+  DestCityMarketID int,
+  DestCityName string,
+  DestState string,
+  DestStateFips int,
+  DestStateName string,
+  DestWac int,
+  Diverted int,
+  FlightDate string,
+  FlightNum int,
+  Month int,
+  Origin string,
+  OriginAirportID int,
+  OriginAirportSeqID int,
+  OriginCityMarketID int,
+  OriginCityName string,
+  OriginState string,
+  OriginStateFips int,
+  OriginStateName string,
+  OriginWac int,
+  Quarter int,
+  TailNum string,
+  TaxiIn int,
+  TaxiOut int,
+  UniqueCarrier string,
+  WheelsOff int,
+  WheelsOn int,
+  Year int
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n'
+LOCATION 's3a://raw-data/airline_data/' 
+TBLPROPERTIES ("skip.header.line.count"="1");
+
+
 # Connection refused for HS2 - NOT pursuing in this setup
 https://stackoverflow.com/questions/68985195/could-not-open-connection-to-the-hs2-server
 

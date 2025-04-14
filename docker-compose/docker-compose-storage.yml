@@ -13,6 +13,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio_data:/data
+      - ../docker/minio/airline_data/:/airline_data/
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -30,6 +31,7 @@ services:
       - minio
     volumes:
       - ../docker/minio/create-buckets.sh:/create-buckets.sh
+      - ../docker/minio/airline_data/:/airline_data/
     entrypoint: ["/bin/sh", "/create-buckets.sh"]
     networks:
       - data_platform_network

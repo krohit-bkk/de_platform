@@ -32,7 +32,7 @@ services:
       - ../docker/superset/init-superset.sh:/app/init-superset.sh
       - superset_data:/app/superset_home
     command: ["/bin/bash", "-c", 
-              "pip install --force-reinstall pillow trino==0.321.0 sqlalchemy-trino==0.4.0 sqlalchemy==1.4.46
+              "pip install --force-reinstall pillow trino==0.323.0 sqlalchemy-trino==0.5.0 sqlalchemy==1.4.46
                && chmod +x /app/init-superset.sh 
                && /app/init-superset.sh ${SUPERSET_ADMIN_USERNAME} ${SUPERSET_ADMIN_PASSWORD}
                && /usr/bin/run-server.sh"
