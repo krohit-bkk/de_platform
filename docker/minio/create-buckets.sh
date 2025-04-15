@@ -20,7 +20,7 @@ echo "2,B,Bar" >> sample-file.csv
 mc mkdir myminio/raw-data/sample_data
 mc cp sample-file.csv myminio/raw-data/sample_data/
 mc ls myminio/raw-data/sample_data/
-mc cp /airline_data/Airline_Data.csv.zip myminio/raw-data/airline_data/
+mc cp /airline_data/Airline_Dataset.csv myminio/raw-data/airline_data/
 mc ls myminio/raw-data/airline_data/
 
 

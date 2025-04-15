@@ -1,90 +1,3 @@
-# PROJECT SETUP
-cd /home/jhanak/Learning/vol_poc
-export PROJECT_ROOT=$(pwd)
-envsubst < .env | tee .env.evaluated
-
-
-# ALIASES
-alias psa='docker ps -a'
-alias rma='docker rm -f $(docker ps -aq)'
-
-# FUNCTIONS
-# print networks and volume
-function nv(){
-  docker volume ls
-  echo ""
-  docker network ls
-}
-
-# Print all
-function all(){
-  echo ""
-  docker ps -a
-  echo ""
-  nv
-}
-
-# Reset PG
-function reset_pg(){
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml down postgres
-  sudo rm -rf ./data/postgres_data && mkdir -p ./data/postgres_data && sudo chmod -R 777 ./data/postgres_data
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d postgres
-}
-
-# Clean Setup
-function clean_all(){
-  # Clean up Trino cluster
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml down -v
-
-  # Clean up Spark cluster
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml down -v
-
-  # Clean up Hive - HMS & HS2
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml down -v
-  rm -rf ${PROJECT_ROOT}/postgres_data && mkdir -p ${PROJECT_ROOT}/postgres_data && chmod -R 777 ${PROJECT_ROOT}/postgres_data
-  rm -rf ${PROJECT_ROOT}/postgres_alt  && mkdir -p ${PROJECT_ROOT}/postgres_alt  && chmod -R 777 ${PROJECT_ROOT}/postgres_alt
-  
-  # Clean up MinIO
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml down -v
-  rm -rf ${PROJECT_ROOT}/minio_data
-
-  # Clean up Base
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml down -v
-
-  # Clean up Docker Volumes
-  docker volume rm -f hive_data minio_data postgres_data postgres_alt
-
-  # Clean up Docker Network
-  docker volume rm -f data_platform_network
-
-  # Print all
-  all
-}
-
-# Start Setup
-function start_all(){
-  # Start up Base
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-base.yml up -d
-
-  # Start up MinIO
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d
-
-  # Start up Hive - HMS & HS2
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-metastore.yml up -d hive-metastore
-
-  # Start up Spark Services
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-master spark-worker-1 spark-worker-2
-
-  # Start up Trino Services
-  docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-coordinator trino-worker-1 trino-worker-2
-
-  # Print all 
-  all 
-}
-
-# Run minio-client to upload some sample data for Hive at location - s3a://raw-data/sample_data/
-docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-storage.yml up -d minio-client && docker logs -f minio-client
-
 # Installing netcat and ss on HMS to check connectivity
 docker exec -it -u root hive-metastore bash 
 apt update && apt install iproute2 -y && apt install netcat
@@ -118,67 +31,33 @@ SELECT * FROM sample a;
 
 CREATE TABLE sample2 AS SELECT CONCAT(id, "~", code) AS spl_id, * FROM sample;
 
-# HIVE - Create table with Airline Data
-  # Unzip and upoad the file Airlin_Data.csv to s3a://raw-data/airline_data/ and create the table:
+# HIVE - Create table with Airline Data <-- Data woud be placed automatically as part of minio-client service
 CREATE DATABASE IF NOT EXISTS airline;
 USE airline;
-DROP TABLE IF EXISTS airline.AIRLINE_DATA;
-CREATE EXTERNAL TABLE airline.AIRLINE_DATA (
-  AirlineID int, 
-  ArrDel15 int, 
-  ArrDelay int, 
-  ArrDelayMinutes int, 
-  ArrTime int, 
-  ArrTimeBlk string,
-  ArrivalDelayGroups string,
-  CRSArrTime int,
-  CRSDepTime int,
-  CancellationCode string,
-  Cancelled int,
-  Carrier string,
-  DayOfWeek int,
-  DayofMonth int,
-  DepDel15 int,
-  DepDelay string,
-  DepDelayMinutes int,
-  DepTime int,
-  DepTimeBlk string,
-  DepartureDelayGroups string,
-  Dest string,
-  DestAirportID int,
-  DestAirportSeqID int,
-  DestCityMarketID int,
-  DestCityName string,
-  DestState string,
-  DestStateFips int,
-  DestStateName string,
-  DestWac int,
-  Diverted int,
-  FlightDate string,
-  FlightNum int,
-  Month int,
-  Origin string,
-  OriginAirportID int,
-  OriginAirportSeqID int,
-  OriginCityMarketID int,
-  OriginCityName string,
-  OriginState string,
-  OriginStateFips int,
-  OriginStateName string,
-  OriginWac int,
-  Quarter int,
-  TailNum string,
-  TaxiIn int,
-  TaxiOut int,
-  UniqueCarrier string,
-  WheelsOff int,
-  WheelsOn int,
-  Year int
+DROP TABLE IF EXISTS airline.passenger_flights
+CREATE EXTERNAL TABLE airline.passenger_flights (
+  PassengerID STRING,
+  FirstName STRING,
+  LastName STRING,
+  Gender STRING,
+  Age INT,
+  Nationality STRING,
+  AirportName STRING,
+  AirportCountryCode STRING,
+  CountryName STRING,
+  AirportContinent STRING,
+  Continents STRING,
+  DepartureDate STRING,
+  ArrivalAirport STRING,
+  PilotName STRING,
+  FlightStatus STRING
 )
 ROW FORMAT DELIMITED
 FIELDS TERMINATED BY ','
+ESCAPED BY '\\'
 LINES TERMINATED BY '\n'
-LOCATION 's3a://raw-data/airline_data/' 
+STORED AS TEXTFILE
+LOCATION 's3a://raw-data/airline_data/'
 TBLPROPERTIES ("skip.header.line.count"="1");
 
 
@@ -418,42 +297,8 @@ Table information:
 only showing top 20 rows
 
 ETL job completed successfully!
-25/04/10 09:26:23 WARN org.sparkproject.jetty.server.AbstractConnector:
-java.io.IOException: No such file or directory
-	at sun.nio.ch.NativeThread.signal(Native Method) ~[?:1.8.0_352]
-	at sun.nio.ch.ServerSocketChannelImpl.implCloseSelectableChannel(ServerSocketChannelImpl.java:291) ~[?:1.8.0_352]
-	at java.nio.channels.spi.AbstractSelectableChannel.implCloseChannel(AbstractSelectableChannel.java:241) ~[?:1.8.0_352]
-	at java.nio.channels.spi.AbstractInterruptibleChannel.close(AbstractInterruptibleChannel.java:115) ~[?:1.8.0_352]
-	at org.sparkproject.jetty.server.ServerConnector.close(ServerConnector.java:371) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.sparkproject.jetty.server.AbstractNetworkConnector.shutdown(AbstractNetworkConnector.java:104) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.sparkproject.jetty.server.Server.doStop(Server.java:444) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.sparkproject.jetty.util.component.AbstractLifeCycle.stop(AbstractLifeCycle.java:94) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.apache.spark.ui.ServerInfo.stop(JettyUtils.scala:525) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.apache.spark.ui.WebUI.$anonfun$stop$2(WebUI.scala:180) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.apache.spark.ui.WebUI.$anonfun$stop$2$adapted(WebUI.scala:180) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at scala.Option.foreach(Option.scala:407) ~[scala-library-2.12.15.jar:?]
-	at org.apache.spark.ui.WebUI.stop(WebUI.scala:180) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.apache.spark.ui.SparkUI.stop(SparkUI.scala:141) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.apache.spark.SparkContext.$anonfun$stop$6(SparkContext.scala:2085) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.apache.spark.SparkContext.$anonfun$stop$6$adapted(SparkContext.scala:2085) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at scala.Option.foreach(Option.scala:407) ~[scala-library-2.12.15.jar:?]
-	at org.apache.spark.SparkContext.$anonfun$stop$5(SparkContext.scala:2085) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.apache.spark.util.Utils$.tryLogNonFatalError(Utils.scala:1484) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.apache.spark.SparkContext.stop(SparkContext.scala:2085) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at org.apache.spark.api.java.JavaSparkContext.stop(JavaSparkContext.scala:550) ~[spark-core_2.12-3.3.0.jar:3.3.0]
-	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[?:1.8.0_352]
-	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62) ~[?:1.8.0_352]
-	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[?:1.8.0_352]
-	at java.lang.reflect.Method.invoke(Method.java:498) ~[?:1.8.0_352]
-	at py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:244) ~[py4j-0.10.9.5.jar:?]
-	at py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:357) ~[py4j-0.10.9.5.jar:?]
-	at py4j.Gateway.invoke(Gateway.java:282) ~[py4j-0.10.9.5.jar:?]
-	at py4j.commands.AbstractCommand.invokeMethod(AbstractCommand.java:132) ~[py4j-0.10.9.5.jar:?]
-	at py4j.commands.CallCommand.execute(CallCommand.java:79) ~[py4j-0.10.9.5.jar:?]
-	at py4j.ClientServerConnection.waitForCommands(ClientServerConnection.java:182) ~[py4j-0.10.9.5.jar:?]
-	at py4j.ClientServerConnection.run(ClientServerConnection.java:106) ~[py4j-0.10.9.5.jar:?]
-	at java.lang.Thread.run(Thread.java:750) ~[?:1.8.0_352]
-^C%
+
+
 kumarrohit@Kumars-Mac-mini de_platform %
 kumarrohit@Kumars-Mac-mini de_platform %
 kumarrohit@Kumars-Mac-mini de_platform %
