@@ -197,19 +197,20 @@ Check for container logs using command:
 ```bash
 docker logs -f delta-lake-test
 ```
-> Please note that the sample execution output is shared in notes.txt. not capturing it here because of sheer length of consle output.
+> Please note that the sample execution output is shared in notes.txt. Not capturing it here because of the sheer length of console output.
 
-Let us try to check if the table `default.`
+Let us try to check if the table `default.delta_products` exists by running:
 ```bash
 docker exec -it -u root hive-metastore hive -e "SHOW TABLES"
+docker exec -it -u root hive-metastore hive -e "SELECT * FROM default.delta_products"
 ```
 ![Alt text](.img/image1.png)
 Oops! Why don't we see the table data?
-Actually, this is an expected behaviour. Hive doesn't support `delta` files by default, but it can manage the metadata for the table though.
+Actually, this is an **expected behaviour**. Hive doesn't support `delta` files by default, but it can manage the metadata for the table though.
 We will use this metadata from HMS and try to read the table in Trino. So let us bring our Trino up!
 
 ### 4. Start the Trino cluster
-Trino is an open-source distributed SQL query processing engine which is built on ***Massively Parallel Processing (MPP)*** architecture, and its cluster has ***coordinator*** and ***worker*** nodes. We will spin up a cluster for Trino with one coordinator service - `trino-coordinator` and two worker services - `trino-worker-1` & `trino-worker-2`. The docker-compose file for managing Spark cluster is `docker-compose-query.yml`. Starting the Trino cluster is veyr straight forward too:
+Trino is an open-source distributed SQL query processing engine which is built on ***Massively Parallel Processing (MPP)*** architecture, and its cluster has ***coordinator*** and ***worker*** nodes. We will spin up a cluster for Trino with one coordinator service - `trino-coordinator` and two worker services - `trino-worker-1` & `trino-worker-2`. The docker-compose file for managing Trino cluster is `docker-compose-query.yml`. Starting the Trino cluster is very straight forward too:
 ```bash
 docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-coordinator trino-worker-1 trino-worker-2
 ```
@@ -224,7 +225,7 @@ docker logs trino-coordinator > /tmp/f.txt 2>&1 && cat /tmp/f.txt | grep -i -e "
 ```
 ![Alt text](.img/image2.png)
 
-Here you can see that we are able to add both Hive and Delta Lake catalog in Trino. Let us read the delta table `default.delta_products` we created earlier:
+Here, you can see that we are able to add both Hive and Delta Lake catalog in Trino. Let us read the delta table `default.delta_products` we created earlier:
 ```bash
 # Show all catalogs available
 docker exec -it -u root trino-coordinator trino --server trino-coordinator:8080 --execute "SHOW CATALOGS"
@@ -242,14 +243,20 @@ Apache Superset is a modern, open-source data exploration and visualization plat
 ```bash
 docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-visualization.yml up -d superset
 ```
-In our setup, we can also using ***Redis*** as caching layer for Superset.
-You can choose to add the same by just commenting the active commands in `init-superset.sh` and uncommenting the commented block.
+**Optional Redis Setup**: Superset can use Redis for enhanced caching:
+1. Edit `init-superset.sh`
+2. Swap the commented/uncommented sections for Redis
+3. The setup will automatically apply when services restart
 
 Once the Superset service is up, you can explore the tool and build cool visualization by sourcing data from Trino. 
-I am sharing below screenshot from sample dashboard I built on table - `airline.passenger_flights`.
+I am sharing below a screenshot from a sample dashboard that I built on table - `airline.passenger_flights`.
 The data for this table is put in it's designated location when service `minio-client` runs and the create table DDL runs when when HMS service sets up.
 
 ![Sample dashboard from Superset](.img/image4.png)
+
+This experiment covers end to end setup of our data platform, where we have MinIO service for storage, Spark as main processing engine, Hive Metastore for metadata management, Trino for data access and Superset as BI/Visualization layer. 
+
+This setup can be further extended by adding a scheduler like Apache AirFlow to further automate (and simulate) scheduled data processing that reflects end to end in our Superset dashboard.
 
 ## 🛠️ Maintenance Commands
 The `setup.sh` script includes preconfigured helper functions for easier platform management:
