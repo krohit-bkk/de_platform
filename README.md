@@ -1,10 +1,10 @@
 # 🚀 Docker-Based Modern Data Platform
 
-```
-[![Docker](https://img.shields.io/badge/Docker-Containers-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+
+[![Docker](.img/Docker-Containers.svg)](https://www.docker.com/)
 [![Spark](https://img.shields.io/badge/Apache_Spark-E25A1C?logo=apachespark&logoColor=white)](https://spark.apache.org/)
 [![Trino](https://img.shields.io/badge/Trino-DD00A1?logo=trino&logoColor=white)](https://trino.io/)
-```
+
 A containerized data platform stack featuring distributed processing, SQL analytics, and data visualization.
 
 ## 🌟 Key Features
