@@ -7,6 +7,9 @@
 
 A containerized data platform stack featuring distributed processing, SQL analytics, and data visualization.
 
+## ✨ Overall Architecture 
+![Architecture](.img/image5.png)
+
 ## 🌟 Key Features
 
 | **Component**             | **Description**                                      |
@@ -169,7 +172,7 @@ docker exec -it -u root hive-metastore hive -e "SELECT * FROM airline.passenger_
 
 Congrats! HMS service is up and running, and able to read/write data from MinIO S3 bucket.
 
-### 3. Start the Spark cluster
+### 4. Start the Spark cluster
 The docker-compose file for managing Spark cluster is `docker-compose-processing.yml`. Starting the Spark cluster is fairly straight forward:
 ```bash
 docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-processing.yml up -d spark-master spark-worker-1 spark-worker-2 
@@ -209,7 +212,7 @@ Oops! Why don't we see the table data?
 Actually, this is an **expected behaviour**. Hive doesn't support `delta` files by default, but it can manage the metadata for the table though.
 We will use this metadata from HMS and try to read the table in Trino. So let us bring our Trino up!
 
-### 4. Start the Trino cluster
+### 5. Start the Trino cluster
 Trino is an open-source distributed SQL query processing engine which is built on ***Massively Parallel Processing (MPP)*** architecture, and its cluster has ***coordinator*** and ***worker*** nodes. We will spin up a cluster for Trino with one coordinator service - `trino-coordinator` and two worker services - `trino-worker-1` & `trino-worker-2`. The docker-compose file for managing Trino cluster is `docker-compose-query.yml`. Starting the Trino cluster is very straight forward too:
 ```bash
 docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-query.yml up -d trino-coordinator trino-worker-1 trino-worker-2
@@ -238,7 +241,7 @@ docker exec -it -u root trino-coordinator trino --server trino-coordinator:8080 
 
 Trino is now fully setup and tested for connectivity with our HMS service.
 
-### 5. Starting the Superset
+### 6. Starting the Superset
 Apache Superset is a modern, open-source data exploration and visualization platform designed for creating interactive dashboards and rich analytics. It supports a wide range of databases and empowers users to analyze data through a no-code interface or SQL editor. Let us start our service which is defined in `docker-compose-visualization.yml`:
 ```bash
 docker-compose --env-file .env.evaluated -f ./docker-compose/docker-compose-visualization.yml up -d superset
